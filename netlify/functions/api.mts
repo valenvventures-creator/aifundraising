@@ -1,6 +1,8 @@
 /**
  * Netlify Function that runs the whole A.I. Nonprofits API (Express) — every
  * /api/*, /webhooks/* and /t/* request is routed here by netlify.toml.
+ * Same hosting model as the other Thought Authorities sites: Netlify Functions,
+ * Netlify Database (NETLIFY_DB_URL) and Netlify Blobs (files and keys).
  */
 import express from 'express';
 import serverless from 'serverless-http';
@@ -15,6 +17,8 @@ type Handler = (event: any, context: any) => Promise<any>;
 let ready: Promise<Handler> | null = null;
 
 async function init(): Promise<Handler> {
+  const { ensureNetlifySecrets } = await import('../../server/lib/secrets.js');
+  await ensureNetlifySecrets(); // generates JWT_SECRET / ENCRYPTION_KEY once if you haven't set them
   const { createApp, assertRlsSafe } = await import('../../server/index.js');
   const { migrate } = await import('../../server/db/migrate.js');
   await migrate();          // idempotent; serialized with an advisory lock
@@ -41,7 +45,7 @@ export const handler = async (event: any, context: any) => {
     return {
       statusCode: 500,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ error: `Server setup problem: ${e?.message ?? 'unknown error'}. Check the site's environment variables (DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY).` }),
+      body: JSON.stringify({ error: `Server setup problem: ${e?.message ?? 'unknown error'}. See README › Deploying on Netlify (Netlify Database must be enabled), then redeploy.` }),
     };
   }
 };

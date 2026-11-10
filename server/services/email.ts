@@ -88,6 +88,28 @@ export function donorVars(d: any, orgName: string, currency = 'USD'): Record<str
 }
 
 /** Which transport will deliver mail for this tenant (Gmail of the sender, or server SMTP). */
+interface MailMessage { from: string; to: string; subject: string; html?: string; text?: string; headers?: Record<string, string>; attachments?: { filename: string; content: Buffer }[] }
+
+/** Minimal nodemailer-compatible sender backed by the Resend HTTP API. */
+export function resendTransport(r: { apiKey: string; from: string; replyTo?: string }) {
+  return {
+    async sendMail(m: MailMessage) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${r.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: m.from, to: [m.to], subject: m.subject, html: m.html, text: m.text, headers: m.headers,
+          reply_to: r.replyTo,
+          attachments: m.attachments?.map((a) => ({ filename: a.filename, content: a.content.toString('base64') })),
+        }),
+      });
+      const body: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`Resend ${res.status}: ${body?.message ?? body?.name ?? 'send failed'}`);
+      return { messageId: body.id as string };
+    },
+  };
+}
+
 export async function transportFor(db: Db, userId: string | null) {
   if (userId) {
     const g = await one(db, `SELECT secrets_enc, config FROM integrations WHERE provider='google' AND user_id=$1 AND status='connected' AND enabled`, [userId]);
@@ -98,6 +120,7 @@ export async function transportFor(db: Db, userId: string | null) {
       }
     }
   }
+  if (config.resend) return { kind: 'resend' as const, from: config.resend.from, t: resendTransport(config.resend) };
   if (config.smtp) {
     return { kind: 'smtp' as const, from: config.smtp.from, t: nodemailer.createTransport({ host: config.smtp.host, port: config.smtp.port, secure: config.smtp.port === 465, auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined }) };
   }
@@ -106,6 +129,6 @@ export async function transportFor(db: Db, userId: string | null) {
 
 export async function requireTransport(db: Db, userId: string | null) {
   const t = await transportFor(db, userId);
-  if (!t) throw badRequest('Email delivery is not configured. Connect Gmail in Settings › Gmail & Calendar, or ask your administrator to configure SMTP.');
+  if (!t) throw badRequest("Email delivery isn't set up. Connect Gmail in Settings › Gmail & Calendar, or ask your administrator to add RESEND_API_KEY and EMAIL_FROM to the site.");
   return t;
 }

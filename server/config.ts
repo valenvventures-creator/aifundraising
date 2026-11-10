@@ -15,8 +15,14 @@ export const config = {
   // On Netlify, URL is the site's primary address (pages and API share it).
   appUrl: process.env.APP_URL ?? process.env.URL ?? 'http://localhost:5173',
   apiUrl: process.env.API_URL ?? process.env.URL ?? 'http://localhost:4000',
-  // NETLIFY_DATABASE_URL is set automatically by Netlify DB (Neon).
-  databaseUrl: process.env.DATABASE_URL ?? process.env.NETLIFY_DATABASE_URL ?? (isProd ? req('DATABASE_URL') : 'postgres://ainp:ainp@localhost:5432/ainp'),
+  // On Netlify, Netlify Database provides NETLIFY_DB_URL automatically (same setup as the other
+  // Thought Authorities sites). DATABASE_URL overrides it, e.g. for a Node host or local development.
+  databaseUrl: (() => {
+    const url = process.env.DATABASE_URL ?? process.env.NETLIFY_DB_URL ?? process.env.NETLIFY_DATABASE_URL;
+    if (url) return url;
+    if (isProd) throw new Error('No database configured. On Netlify, enable Netlify Database for this site (it provides NETLIFY_DB_URL); elsewhere set DATABASE_URL.');
+    return 'postgres://ainp:ainp@localhost:5432/ainp';
+  })(),
   jwtSecret: isProd ? req('JWT_SECRET') : (process.env.JWT_SECRET ?? 'dev-only-jwt-secret-change-me'),
   // 32-byte key (hex or base64) used to encrypt integration credentials at rest.
   encryptionKey: (() => {
@@ -32,6 +38,11 @@ export const config = {
   storageDir: process.env.STORAGE_DIR ?? './storage',
   anthropicModel: process.env.ANTHROPIC_MODEL ?? 'claude-opus-5-5',
   aiEnabled: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),
+  // Transactional email via Resend — same variable names as the other Thought Authorities sites.
+  // EMAIL_FROM must use a domain verified in Resend, e.g. "Thought Authorities <no-reply@yourdomain.com>".
+  resend: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? {
+    apiKey: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM, replyTo: process.env.EMAIL_REPLY_TO || undefined,
+  } : null,
   smtp: process.env.SMTP_HOST ? {
     host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT ?? 587),
     user: process.env.SMTP_USER, pass: process.env.SMTP_PASS,

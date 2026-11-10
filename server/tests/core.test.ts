@@ -15,6 +15,7 @@ import { migrate } from '../db/migrate.js';
 import { bootstrapTenant } from '../services/tenant.js';
 import { toolsFor } from '../services/ask.js';
 import { SYSTEM_ROLES } from '../lib/permissions.js';
+import { resendTransport } from '../services/email.js';
 
 after(() => pool.end());
 
@@ -64,7 +65,8 @@ test('Stripe and Square webhook signatures are validated', () => {
   assert.throws(() => verifySquare(body, 'bad', 'key', 'https://x/webhooks/square/k'));
 });
 
-test('row-level security isolates tenants even when a query omits the tenant filter', async () => {
+// Netlify's build has no database; this test runs locally and in CI with Postgres available.
+test('row-level security isolates tenants even when a query omits the tenant filter', { skip: process.env.NETLIFY === 'true' ? 'no database during Netlify build' : false }, async () => {
   await migrate();
   const { t1, t2, d1 } = await withSystem(async (db) => {
     const u = await one(db, `INSERT INTO users(email,name) VALUES ($1,'Iso Test') RETURNING id`, [`iso-${crypto.randomUUID()}@test.local`]);
@@ -88,4 +90,24 @@ test('Ask A.I. Nonprofits exposes only read tools, filtered by permission', () =
   for (const t of all) assert.doesNotMatch(t.name, /send|create|update|delete|post|transfer|refund/i);
   const staff = toolsFor(ctx(SYSTEM_ROLES.find((r) => r.name === 'General Staff')!.permissions));
   assert.ok(staff.every((t) => t.perm === 'work.read'), 'general staff cannot query donors or finances');
+});
+
+test('Resend transport sends the documented payload and surfaces API errors', async () => {
+  const calls: any[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: any) => {
+    calls.push({ url, init });
+    const ok = calls.length === 1;
+    return new Response(JSON.stringify(ok ? { id: 're_123' } : { message: 'domain not verified' }), { status: ok ? 200 : 403 });
+  }) as any;
+  try {
+    const t = resendTransport({ apiKey: 're_key', from: 'TA <no-reply@example.org>', replyTo: 'help@example.org' });
+    const r = await t.sendMail({ from: 'TA <no-reply@example.org>', to: 'a@b.co', subject: 'Hi', html: '<p>x</p>', attachments: [{ filename: 'r.pdf', content: Buffer.from('pdf') }] });
+    assert.equal(r.messageId, 're_123');
+    assert.equal(calls[0].url, 'https://api.resend.com/emails');
+    assert.equal(calls[0].init.headers.Authorization, 'Bearer re_key');
+    const body = JSON.parse(calls[0].init.body);
+    assert.deepEqual(body.to, ['a@b.co']); assert.equal(body.reply_to, 'help@example.org'); assert.equal(body.attachments[0].content, Buffer.from('pdf').toString('base64'));
+    await assert.rejects(t.sendMail({ from: 'x', to: 'a@b.co', subject: 's' }), /Resend 403: domain not verified/);
+  } finally { globalThis.fetch = realFetch; }
 });

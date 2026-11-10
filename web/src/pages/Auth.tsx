@@ -34,6 +34,7 @@ export function Login() {
         {err && <ErrorBox error={err} />}
         <Field label="Email"><Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
         <Field label="Password"><PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
+        <div className="-mt-1 text-right"><Link to="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">Forgot password?</Link></div>
         <Button variant="primary" className="w-full" loading={busy}>Sign in</Button>
       </form>
       <p className="mt-4 text-center text-sm text-slate-500">New to A.I. Nonprofits? <Link to="/signup" className="font-medium text-brand-600 hover:underline">Create your organization</Link></p>
@@ -91,6 +92,40 @@ export function NewOrganization() {
         <Button variant="primary" loading={busy}>Create organization</Button>
       </form>
     </div>
+  );
+}
+
+export function ForgotPassword() {
+  const [email, setEmail] = useState(''); const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null); const [sent, setSent] = useState<null | boolean>(null);
+  return (
+    <Shell title="Forgot your password?" subtitle="Enter your email and we'll send a link to choose a new one. The link works for 30 minutes.">
+      {sent === true && <Notice>If an account exists for <b>{email}</b>, a reset link is on its way. Check your inbox (and spam folder).</Notice>}
+      {sent === false && <Notice tone="warn">Email delivery isn't set up on this site yet, so reset links can't be sent. Ask your administrator to add RESEND_API_KEY and EMAIL_FROM in Netlify, or to reset your access from Admin &amp; Access.</Notice>}
+      {sent === null && <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { const r = await api.post('/auth/forgot', { email }); setSent(Boolean(r.emailConfigured)); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
+        {err && <ErrorBox error={err} />}
+        <Field label="Email"><Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
+        <Button variant="primary" className="w-full" loading={busy}>Send reset link</Button>
+      </form>}
+      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/" className="font-medium text-brand-600 hover:underline">Back to sign in</Link></p>
+    </Shell>
+  );
+}
+
+export function ResetPassword() {
+  const { token } = useParams(); const nav = useNavigate();
+  const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState('');
+  const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false);
+  return (
+    <Shell title="Choose a new password" subtitle="After saving, sign in with your new password. Other signed-in sessions are signed out.">
+      {done ? <><Notice>Your password has been changed.</Notice><Button variant="primary" className="mt-4 w-full" onClick={() => nav('/')}>Sign in</Button></> :
+        <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); const bad = passwordProblem(password, confirm); if (bad) { setErr(bad); return; } setBusy(true); setErr(null); try { await api.post(`/auth/reset/${token}`, { password }); setDone(true); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
+          {err && <ErrorBox error={err} />}
+          <PasswordPair label="New password" password={password} confirm={confirm} onPassword={setPassword} onConfirm={setConfirm} />
+          <Button variant="primary" className="w-full" loading={busy}>Save new password</Button>
+        </form>}
+      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/forgot-password" className="font-medium text-brand-600 hover:underline">Request a new link</Link></p>
+    </Shell>
   );
 }
 

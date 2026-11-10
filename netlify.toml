@@ -1,9 +1,11 @@
-# A.I. Nonprofits on Netlify: the web app is static (dist/), and the API runs as
-# the `api` Netlify Function. Background automations run as the `jobs` scheduled function.
-# Requires a PostgreSQL database — see README › Deploying on Netlify.
+# A.I. Nonprofits on Netlify — same model as the other Thought Authorities sites:
+# Netlify Functions (app), Netlify Database (accounts and data, provisioned from
+# netlify/database/migrations on deploy) and Netlify Blobs (files and keys).
+# The web app is static (dist/); the API is the `api` function; automations run in `jobs`.
 
 [build]
-  command = "npm run build"
+  # Every deploy runs the test suite first; a failing test stops the deploy.
+  command = "npm test && npm run build"
   publish = "dist"
 
 [build.environment]
@@ -42,3 +44,15 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"

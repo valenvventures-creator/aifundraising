@@ -5,7 +5,7 @@ import './index.css';
 import { SessionProvider, useSession } from './lib/session';
 import { ToastProvider, Spinner, Empty, LinkButton } from './components/ui';
 import { Layout } from './components/Layout';
-import { Login, Signup, NewOrganization, AcceptInvite, PublicEvent } from './pages/Auth';
+import { Login, Signup, NewOrganization, AcceptInvite, PublicEvent, ForgotPassword, ResetPassword } from './pages/Auth';
 import { Home, WorkspaceHome } from './pages/Home';
 import { DonorsShell, GivingShell, GivingOverviewRoute, DonorList, ReceiptsPage, GrowthAudit, GivingReports } from './pages/Donors';
 import { DonorProfile, DonorBrief, DonorPortal } from './pages/DonorProfile';
@@ -34,6 +34,8 @@ function AuthedApp() {
   const loc = useLocation();
   if (loc.pathname.startsWith('/e/')) return <Routes><Route path="/e/:slug" element={<PublicEvent />} /></Routes>;
   if (loc.pathname.startsWith('/invite/')) return <Routes><Route path="/invite/:token" element={<AcceptInvite />} /></Routes>;
+  if (loc.pathname.startsWith('/reset-password/')) return <Routes><Route path="/reset-password/:token" element={<ResetPassword />} /></Routes>;
+  if (loc.pathname === '/forgot-password') return <ForgotPassword />;
   if (loading) return <Spinner label="Loading A.I. Nonprofits…" />;
   if (!me) return <Routes><Route path="/signup" element={<Signup />} /><Route path="*" element={<Login />} /></Routes>;
   if (!me.tenant) return <div className="mx-auto max-w-xl p-8"><NewOrganization /></div>;

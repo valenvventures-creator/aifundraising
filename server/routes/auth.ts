@@ -11,6 +11,7 @@ import { bootstrapTenant } from '../services/tenant.js';
 import { audit } from '../lib/audit.js';
 import { config } from '../config.js';
 import { PERMISSIONS } from '../lib/permissions.js';
+import { transportFor } from '../services/email.js';
 
 export const authRouter = Router();
 // Key by client IP; on Netlify the real client address arrives in x-nf-client-connection-ip.
@@ -57,17 +58,19 @@ authRouter.get('/me', h(async (req, res) => {
   const s = readSession(req);
   if (!s) return res.status(401).json({ error: 'Not signed in' });
   const data = await withSystem(async (db) => {
-    const u = await one(db, `SELECT id, email, name, is_platform_owner FROM users WHERE id=$1`, [s.sub]);
+    const u = await one(db, `SELECT id, email, name, is_platform_owner, password_changed_at FROM users WHERE id=$1`, [s.sub]);
     const orgs = await many(db, `SELECT t.id, t.name FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$1 AND m.status='active' ORDER BY t.name`, [s.sub]);
     const tenant = s.tid ? await one(db, `SELECT id, name, legal_name, currency, locale, country, workspace_term, workspace_term_plural, faith_based, billing_enabled, tax_jurisdiction, onboarding, invoice_terms FROM tenants WHERE id=$1`, [s.tid]) : null;
     return { u, orgs, tenant };
   });
-  if (!data.u) return res.status(401).json({ error: 'Not signed in' });
-  const ctx = s.tid ? await loadContext(s.sub, s.tid) : null;
+  const stale = data.u?.password_changed_at && s.iat && s.iat * 1000 < new Date(data.u.password_changed_at).getTime() - 1000;
+  if (!data.u || stale) { clearSession(res); return res.status(401).json({ error: 'Not signed in' }); }
+  delete data.u.password_changed_at;
+  const ctx = s.tid ? await loadContext(s.sub, s.tid, s.iat) : null;
   res.json({
     user: data.u, organizations: data.orgs, tenant: ctx ? data.tenant : null,
     role: ctx?.roleName ?? null, permissions: ctx ? [...ctx.permissions] : [], allMinistries: ctx?.allMinistries ?? false, ministryIds: ctx?.ministryIds ?? [],
-    features: { ai: config.aiEnabled, smtp: Boolean(config.smtp), quickbooks: Boolean(config.quickbooks.clientId), google: Boolean(config.google.clientId),
+    features: { ai: config.aiEnabled, smtp: Boolean(config.smtp || config.resend), resend: Boolean(config.resend), quickbooks: Boolean(config.quickbooks.clientId), google: Boolean(config.google.clientId),
       googleMaps: Boolean(config.google.mapsKey), plaid: Boolean(config.plaid.clientId) },
     permissionCatalog: PERMISSIONS,
   });
@@ -110,6 +113,47 @@ authRouter.post('/invite/:token', limiter, h(async (req, res) => {
     return { userId: u.id, tenantId: m.tenant_id };
   });
   issueSession(res, out.userId, out.tenantId);
+  res.json({ ok: true });
+}));
+
+// ───────── Forgot / reset password (same flow as the other Thought Authorities sites) ─────────
+const sha256 = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
+
+authRouter.post('/forgot', limiter, h(async (req, res) => {
+  const { email } = parse(z.object({ email: z.string().email() }), req.body);
+  const out = await withSystem(async (db) => {
+    const tr = await transportFor(db, null);
+    if (!tr) return { ok: true, emailConfigured: false };
+    const u = await one(db, `SELECT id, name, email FROM users WHERE lower(email)=lower($1) AND password_hash IS NOT NULL`, [email]);
+    if (u) {
+      const token = crypto.randomBytes(32).toString('hex');
+      await db.query(`UPDATE password_reset_tokens SET used_at=now() WHERE user_id=$1 AND used_at IS NULL`, [u.id]);
+      await db.query(`INSERT INTO password_reset_tokens(user_id, token_hash, expires_at) VALUES ($1,$2, now() + interval '30 minutes')`, [u.id, sha256(token)]);
+      const link = `${config.appUrl}/reset-password/${token}`;
+try {
+      await tr.t.sendMail({ from: tr.from, to: u.email, subject: 'Reset your A.I. Nonprofits password',
+        text: `Hello ${u.name},\n\nUse this link within 30 minutes to choose a new password:\n${link}\n\nIf you didn't ask for this, you can ignore this email.`,
+        html: `<p>Hello ${u.name.replace(/[<>&]/g, '')},</p><p><a href="${link}">Choose a new password</a>. The link works for 30 minutes and only once.</p><p>If you didn't ask for this, you can ignore this email.</p>` });
+      } catch (e: any) {
+        console.error('reset email failed', e);
+        throw badRequest("We couldn't send the reset email right now. Please try again later or contact your administrator.");
+      }
+    }
+    return { ok: true, emailConfigured: true }; // same answer whether or not the email has an account
+  });
+  res.json(out);
+}));
+
+authRouter.post('/reset/:token', limiter, h(async (req, res) => {
+  const { password: pw } = parse(z.object({ password }), req.body);
+  await withSystem(async (db) => {
+    const t = await one(db, `SELECT * FROM password_reset_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at > now() FOR UPDATE`, [sha256(String(req.params.token))]);
+    if (!t) throw badRequest('This reset link is invalid or has expired. Request a new one.');
+    await db.query(`UPDATE users SET password_hash=$2, password_changed_at=now() WHERE id=$1`, [t.user_id, await bcrypt.hash(pw, 12)]);
+    await db.query(`UPDATE password_reset_tokens SET used_at=now() WHERE user_id=$1 AND used_at IS NULL`, [t.user_id]);
+    for (const m of await many(db, `SELECT tenant_id FROM memberships WHERE user_id=$1 AND status='active'`, [t.user_id]))
+      await audit(db, { tenantId: m.tenant_id, userId: t.user_id, ip: req.ip }, 'security', 'password_reset', 'Password reset via email link');
+  });
   res.json({ ok: true });
 }));
 

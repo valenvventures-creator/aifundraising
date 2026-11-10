@@ -26,22 +26,33 @@ npm test
 
 ## Deploying on Netlify
 
-The repository includes `netlify.toml`. Netlify builds the web app, runs the API as a Netlify Function (`netlify/functions/api.mts`), and runs background automations every minute as a Scheduled Function (`netlify/functions/jobs.mts`). Uploaded files (receipt photos, attachments) are stored in Netlify Blobs. Netlify does **not** provide the database, so you connect a PostgreSQL database.
+A.I. Nonprofits uses the same model as the other Thought Authorities sites (A.I. C-Suite and A.I. IPO): **Netlify Functions** for the app, **Netlify Database** for accounts and data, and **Netlify Blobs** for uploaded files and keys.
 
-1. **Create a database.** The simplest option is a free [Neon](https://neon.tech) project. Copy its connection string; it looks like `postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`. Netlify DB (also powered by Neon) works too and sets `NETLIFY_DATABASE_URL` for you.
-2. **Connect the repository** in Netlify: *Add new site → Import an existing project → GitHub → `ainonprofits`*. The build settings come from `netlify.toml`; leave them as they are.
-3. **Add environment variables** under *Site configuration → Environment variables*. Make sure each one is available to **Functions**:
-   - `DATABASE_URL`: the connection string from step 1 (skip it if you used Netlify DB).
-   - `JWT_SECRET` and `ENCRYPTION_KEY`: each a random 64-character hex string. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` or any password generator that can produce hex. **Keep `ENCRYPTION_KEY` safe and never change it**, because it decrypts saved integration credentials.
-   - Optional: `ANTHROPIC_API_KEY`, SMTP, QuickBooks, Google and Plaid settings from `.env.example`. You don't need `APP_URL` or `API_URL` on Netlify; the site's own address is used.
-4. **Deploy** (*Deploys → Trigger deploy*). On the first request the app creates its tables. Then open the site and choose *Create your organization*.
-5. Optional demo data: from a computer with this repository, run `DATABASE_URL="<your connection string>" npm run seed` and sign in as `demo@ainonprofits.org` / `demo-password-123`.
+1. In Netlify, choose **Add new project → Import an existing project → GitHub → `ainonprofits`**, or link the repository to an existing project. `netlify.toml` sets up the build, so leave the build command and publish directory empty in the Netlify UI.
+2. **Netlify Database is set up automatically on deploy**, because the repository has a migration in `netlify/database/migrations/` (the same convention as the other sites). Netlify then provides `NETLIFY_DB_URL`, and the app creates the rest of its tables on first use. Netlify Database requires a credit-based Netlify plan.
+3. **Deploy.** Every build runs the test suite first, and a failing test stops the deploy.
 
-Netlify limits to be aware of:
-- **Function time limit:** about 10 seconds per request on standard plans (Netlify support can raise it to 26 seconds). AI answers and drafts, very large exports, and big imports can exceed this. If they do, ask Netlify to raise the limit or use a Node host (below).
-- **Uploads:** about 4–5 MB per file.
-- **Background work:** runs once a minute in short batches. Scheduled emails and journey steps can start up to a minute late, and large email sends continue across several runs.
-- **Database role:** the app creates a restricted database role named `ainp_rls` so organizations stay isolated. Neon's default owner role can do this. If the role can't be created, the API refuses to start and the error message says so.
+You don't need to set any variables to get started. Open the site and choose **Create your organization**.
+
+**Optional environment variables** (*Site configuration → Environment variables*):
+
+| Variable | Purpose |
+| --- | --- |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Turns on password-reset, invitation, receipt and campaign emails. These are the same names as the other sites. `EMAIL_FROM` must use a domain verified in Resend. |
+| `ANTHROPIC_API_KEY` | Turns on AI answers in Ask A.I. Nonprofits and AI-written drafts. Without it, those features use built-in reports and templates. |
+| `JWT_SECRET`, `ENCRYPTION_KEY` | Your own keys. If they're unset, each is generated once and kept in a private Netlify Blobs store, separate from the database. **Never change or delete `ENCRYPTION_KEY` once data exists**, or saved integration credentials become unreadable. |
+| `QBO_*`, `GOOGLE_*`, `PLAID_*` | QuickBooks, Google (Gmail/Calendar/Maps) and bank-feed connections. See `.env.example`. |
+| `DATABASE_URL` | Use your own PostgreSQL database instead of Netlify Database. |
+
+**Email.** Without Resend (or a user's connected Gmail), the app still works. *Forgot password* explains that email isn't set up and never shows reset links on screen, and invitations give the administrator a private link to share.
+
+**Demo data (optional).** From a computer with this repository, run `DATABASE_URL="<connection string>" npm run seed`, then sign in as `demo@ainonprofits.org` / `demo-password-123`.
+
+**Netlify limits.**
+- **Requests:** each request has about 10 seconds on standard plans (Netlify support can raise it to 26). AI answers and drafts, very large exports and big imports may need longer.
+- **Uploads:** up to about 4 MB per file.
+- **Background work:** runs once a minute in short batches, so scheduled emails and journey steps can start up to a minute late.
+- **Organization isolation:** the app creates a restricted database role, `ainp_rls`. If the database doesn't allow that, the API refuses to start and says why.
 
 ## Deploying on a Node host (alternative)
 

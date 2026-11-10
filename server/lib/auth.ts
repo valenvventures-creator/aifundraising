@@ -32,21 +32,23 @@ export function issueSession(res: Response, userId: string, tenantId: string | n
 }
 export function clearSession(res: Response) { res.clearCookie(COOKIE, { path: '/' }); }
 
-export function readSession(req: Request): { sub: string; tid: string | null } | null {
+export function readSession(req: Request): { sub: string; tid: string | null; iat?: number } | null {
   const t = req.cookies?.[COOKIE];
   if (!t) return null;
   try { return jwt.verify(t, config.jwtSecret) as any; } catch { return null; }
 }
 
-export async function loadContext(userId: string, tenantId: string): Promise<AuthContext | null> {
+export async function loadContext(userId: string, tenantId: string, issuedAt?: number): Promise<AuthContext | null> {
   return withSystem(async (db) => {
     const r = await db.query(
       `SELECT m.id membership_id, m.all_ministries, m.ministry_ids, r.name role_name, r.permissions,
-              u.email, u.name, u.is_platform_owner
+              u.email, u.name, u.is_platform_owner, u.password_changed_at
          FROM memberships m JOIN roles r ON r.id=m.role_id JOIN users u ON u.id=m.user_id
         WHERE m.user_id=$1 AND m.tenant_id=$2 AND m.status='active'`, [userId, tenantId]);
     const m = r.rows[0];
     if (!m) return null;
+    // Sessions signed before the latest password change are no longer valid.
+    if (issuedAt && m.password_changed_at && issuedAt * 1000 < new Date(m.password_changed_at).getTime() - 1000) return null;
     return {
       userId, tenantId, email: m.email, name: m.name, membershipId: m.membership_id, roleName: m.role_name,
       permissions: new Set(m.permissions), allMinistries: m.all_ministries, ministryIds: m.ministry_ids ?? [],
@@ -60,7 +62,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     const s = readSession(req);
     if (!s) throw new HttpError(401, 'Please sign in.');
     if (!s.tid) throw new HttpError(409, 'Choose or create an organization first.');
-    const ctx = await loadContext(s.sub, s.tid);
+    const ctx = await loadContext(s.sub, s.tid, s.iat);
     if (!ctx) throw new HttpError(401, 'Your access to this organization is no longer active.');
     req.auth = ctx;
     next();

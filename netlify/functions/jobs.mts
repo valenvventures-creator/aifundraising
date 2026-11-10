@@ -7,7 +7,12 @@
 process.env.AINP_SERVERLESS = '1';
 process.env.NODE_ENV ??= 'production';
 
-export const handler = async () => {
+import { connectLambda } from '@netlify/blobs';
+
+export const handler = async (event: any) => {
+  if (event?.blobs) connectLambda(event);
+  const { ensureNetlifySecrets } = await import('../../server/lib/secrets.js');
+  await ensureNetlifySecrets();
   const { processQueue, periodic } = await import('../../server/jobs/runner.js');
   const stopAt = Date.now() + 20_000;
   await periodic().catch((e: any) => console.error('periodic automations failed', e));
