@@ -1,0 +1,56 @@
+/** Permission catalogue. Each key is separately grantable through custom roles. */
+export const PERMISSIONS = {
+  'donors.read': 'View donors, gifts and fundraising intelligence',
+  'donors.write': 'Create and edit donors, log contacts and asks',
+  'donors.private_notes': 'View and edit restricted private donor notes',
+  'donors.delete': 'Archive / merge donors',
+  'gifts.write': 'Enter, edit and batch gifts; send receipts and thank-yous',
+  'grants.read': 'View foundations and grants',
+  'grants.write': 'Manage foundations and grants',
+  'projects.read': 'View projects', 'projects.write': 'Manage projects',
+  'email.read': 'View email campaigns, audiences and analytics',
+  'email.write': 'Create and edit email campaigns, audiences, journeys and templates',
+  'email.send': 'Send or schedule email campaigns and activate journeys',
+  'events.read': 'View events', 'events.write': 'Manage events and registrations',
+  'finance.read': 'View accounting, funds, budgets and financial reports',
+  'finance.write': 'Create transactions, expenses, invoices, payroll entries, draft journals',
+  'finance.approve': 'Approve/post/void journal entries and reconcile bank feeds',
+  'work.read': 'View tasks, jobs, calendar, communications and time',
+  'work.write': 'Manage tasks, jobs, communications and time entries',
+  'impact.read': 'View impact data', 'impact.write': 'Manage impact metrics and stories',
+  'messages.use': 'Use internal messages',
+  'reports.read': 'Run reports and weekly updates',
+  'data.export': 'Export data (CSV/XLSX/PDF/JSON backups)',
+  'data.import': 'Import and migrate data',
+  'ai.ask': 'Use Ask A.I. Nonprofits and draft generation',
+  'integrations.manage': 'Connect and configure integrations',
+  'settings.manage': 'Manage organization settings',
+  'admin.users': 'Invite users, assign roles and workspace access',
+  'audit.read': 'View the audit log',
+} as const;
+export type Permission = keyof typeof PERMISSIONS;
+const ALL = Object.keys(PERMISSIONS) as Permission[];
+
+const read: Permission[] = ['donors.read', 'grants.read', 'projects.read', 'email.read', 'events.read', 'finance.read',
+  'work.read', 'impact.read', 'messages.use', 'reports.read', 'ai.ask'];
+
+export const SYSTEM_ROLES: { name: string; description: string; permissions: Permission[] }[] = [
+  { name: 'Organization Admin', description: 'Full access to this organization', permissions: ALL },
+  { name: 'Executive', description: 'Leadership visibility across fundraising, finance and impact',
+    permissions: [...read, 'donors.private_notes', 'data.export', 'finance.approve', 'audit.read'] },
+  { name: 'Development/Fundraising', description: 'Donors, gifts, outreach, events and grants',
+    permissions: ['donors.read', 'donors.write', 'donors.private_notes', 'gifts.write', 'grants.read', 'grants.write',
+      'projects.read', 'email.read', 'email.write', 'email.send', 'events.read', 'events.write', 'work.read', 'work.write',
+      'impact.read', 'messages.use', 'reports.read', 'ai.ask', 'data.export', 'data.import'] },
+  { name: 'Finance/Accounting', description: 'Fund accounting, invoices, payroll, budgets and reports',
+    permissions: ['donors.read', 'gifts.write', 'finance.read', 'finance.write', 'finance.approve', 'projects.read',
+      'grants.read', 'work.read', 'messages.use', 'reports.read', 'ai.ask', 'data.export', 'data.import', 'integrations.manage'] },
+  { name: 'Grant Manager', description: 'Foundations, grants, projects and impact reporting',
+    permissions: ['donors.read', 'grants.read', 'grants.write', 'projects.read', 'projects.write', 'impact.read', 'impact.write',
+      'work.read', 'work.write', 'messages.use', 'reports.read', 'ai.ask'] },
+  { name: 'Program/Impact Staff', description: 'Projects and impact measurement',
+    permissions: ['projects.read', 'projects.write', 'impact.read', 'impact.write', 'work.read', 'work.write', 'messages.use', 'ai.ask'] },
+  { name: 'General Staff', description: 'Tasks, calendar, time and messages',
+    permissions: ['work.read', 'work.write', 'messages.use', 'projects.read', 'events.read'] },
+  { name: 'Read Only', description: 'View-only access to non-sensitive areas', permissions: read.filter((p) => p !== 'ai.ask') },
+];
