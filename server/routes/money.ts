@@ -16,6 +16,7 @@ import { sendTable } from '../services/exporter.js';
 import { fmtMoney, fmtMoney2, round2, today, addDays, DONOR_NAME_SQL } from '../lib/util.js';
 import { config } from '../config.js';
 import { requireTransport } from '../services/email.js';
+import { putFile } from '../lib/storage.js';
 import { generateText } from '../services/ai.js';
 
 export const moneyRouter = Router();
@@ -24,10 +25,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 
 export async function saveAttachment(db: Db, req: Request, file: Express.Multer.File, entityType: string, entityId: string | null) {
   const allowed = /^(image\/(png|jpe?g|webp|heic|gif)|application\/pdf|text\/(plain|csv)|message\/rfc822|application\/(msword|vnd\.openxmlformats-officedocument\.[a-z.]+|vnd\.ms-outlook))$/;
   if (!allowed.test(file.mimetype)) throw badRequest(`File type ${file.mimetype} is not allowed.`);
-  const key = path.join(req.auth!.tenantId, `${crypto.randomUUID()}${path.extname(file.originalname).slice(0, 8)}`);
-  const full = path.join(config.storageDir, key);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, file.buffer);
+  const key = `${req.auth!.tenantId}/${crypto.randomUUID()}${path.extname(file.originalname).replace(/[^.\w]/g, '').slice(0, 8)}`;
+  await putFile(key, file.buffer);
   return one(db, `INSERT INTO attachments(tenant_id, entity_type, entity_id, filename, mime, size, storage_key, uploaded_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, filename, mime, size`,
     [req.auth!.tenantId, entityType, entityId, file.originalname.slice(0, 200), file.mimetype, file.size, key, req.auth!.userId]);
 }

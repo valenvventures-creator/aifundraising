@@ -24,12 +24,28 @@ Tests cover ledger balancing, scoring, tenant isolation, webhook signatures, the
 npm test
 ```
 
-## Deploying
+## Deploying on Netlify
 
-A.I. Nonprofits is **one Node.js server plus a PostgreSQL database**. The server serves the web pages *and* the `/api` endpoints from the same address.
+The repository includes `netlify.toml`. Netlify builds the web app, runs the API as a Netlify Function (`netlify/functions/api.mts`), and runs background automations every minute as a Scheduled Function (`netlify/functions/jobs.mts`). Uploaded files (receipt photos, attachments) are stored in Netlify Blobs. Netlify does **not** provide the database, so you connect a PostgreSQL database.
 
-- Static-only hosts (GitHub Pages, or Netlify/Vercel static sites) will show the pages, but every action fails with “Can’t reach the A.I. Nonprofits server”. Nothing answers `/api` on those hosts.
-- Use a host that runs a Node service and offers Postgres, such as Render, Railway, Fly.io, a VPS, or anything that runs the included Dockerfile. Set the variables from `.env.example`, then `npm run build` and `npm start`. Migrations run automatically on start.
+1. **Create a database.** The simplest option is a free [Neon](https://neon.tech) project. Copy its connection string; it looks like `postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`. Netlify DB (also powered by Neon) works too and sets `NETLIFY_DATABASE_URL` for you.
+2. **Connect the repository** in Netlify: *Add new site → Import an existing project → GitHub → `ainonprofits`*. The build settings come from `netlify.toml`; leave them as they are.
+3. **Add environment variables** under *Site configuration → Environment variables*. Make sure each one is available to **Functions**:
+   - `DATABASE_URL`: the connection string from step 1 (skip it if you used Netlify DB).
+   - `JWT_SECRET` and `ENCRYPTION_KEY`: each a random 64-character hex string. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` or any password generator that can produce hex. **Keep `ENCRYPTION_KEY` safe and never change it**, because it decrypts saved integration credentials.
+   - Optional: `ANTHROPIC_API_KEY`, SMTP, QuickBooks, Google and Plaid settings from `.env.example`. You don't need `APP_URL` or `API_URL` on Netlify; the site's own address is used.
+4. **Deploy** (*Deploys → Trigger deploy*). On the first request the app creates its tables. Then open the site and choose *Create your organization*.
+5. Optional demo data: from a computer with this repository, run `DATABASE_URL="<your connection string>" npm run seed` and sign in as `demo@ainonprofits.org` / `demo-password-123`.
+
+Netlify limits to be aware of:
+- **Function time limit:** about 10 seconds per request on standard plans (Netlify support can raise it to 26 seconds). AI answers and drafts, very large exports, and big imports can exceed this. If they do, ask Netlify to raise the limit or use a Node host (below).
+- **Uploads:** about 4–5 MB per file.
+- **Background work:** runs once a minute in short batches. Scheduled emails and journey steps can start up to a minute late, and large email sends continue across several runs.
+- **Database role:** the app creates a restricted database role named `ainp_rls` so organizations stay isolated. Neon's default owner role can do this. If the role can't be created, the API refuses to start and the error message says so.
+
+## Deploying on a Node host (alternative)
+
+The app is also a single Node.js server plus PostgreSQL that serves the pages and `/api` from one address. You can run it on Render, Railway, Fly.io, a VPS, or anything that runs the included Dockerfile. Set the variables from `.env.example`, then run `npm run build` and `npm start`. Migrations run automatically on start. A purely static host (such as GitHub Pages) won't work, because nothing would answer `/api`.
 
 ## Architecture
 
@@ -38,8 +54,8 @@ A.I. Nonprofits is **one Node.js server plus a PostgreSQL database**. The server
 | API | TypeScript, Express, `pg` (raw SQL, numbered migrations in `server/db/migrations`) |
 | Database | PostgreSQL with **row-level security on every tenant table** (`app.tenant_id` set per transaction) |
 | Web | React 18, Vite, Tailwind, React Router, Recharts, Leaflet (OpenStreetMap tiles) |
-| Jobs | In-process queue on `job_queue` (`FOR UPDATE SKIP LOCKED`) plus periodic automations |
-| Files | Local `STORAGE_DIR` (mount a volume, or replace `saveAttachment` with S3) |
+| Jobs | Queue on `job_queue` (`FOR UPDATE SKIP LOCKED`) plus periodic automations — in-process on a Node host, a Netlify Scheduled Function on Netlify |
+| Files | Local `STORAGE_DIR`, or Netlify Blobs when running on Netlify (`server/lib/storage.ts`) |
 | PDF / CSV / XLSX | pdfkit, csv-stringify, exceljs |
 | AI | Anthropic SDK (`claude-opus-5-5`, adaptive thinking, server-side refusal fallback). Without a key it falls back to deterministic template drafts and rule-based Q&A |
 
@@ -86,7 +102,7 @@ The QuickBooks, Square, PayPal, Google and Plaid client code follows each provid
 ## Known limitations and next steps
 
 - The job runner is in-process. For scale, run one worker (`RUN_JOBS=true`) and set `RUN_JOBS=false` on web replicas.
-- Attachments are stored on local disk. Swap in object storage for multi-instance deployments.
+- On a Node host, attachments are stored on local disk. Use a persistent volume, or move to object storage for multi-instance deployments.
 - Email open tracking uses a pixel, so open rates are estimates. That is labelled in the UI.
 - Migration presets map common column names from generic CRM and church-management exports. Vendor-specific API migrations are not included.
 - Dev/staging/prod are environment-driven (`.env` per environment, the Docker image, Postgres). No CI or CD pipeline is included.

@@ -12,9 +12,11 @@ const isProd = process.env.NODE_ENV === 'production';
 export const config = {
   isProd,
   port: Number(process.env.PORT ?? 4000),
-  appUrl: process.env.APP_URL ?? 'http://localhost:5173',
-  apiUrl: process.env.API_URL ?? 'http://localhost:4000',
-  databaseUrl: req('DATABASE_URL', 'postgres://ainp:ainp@localhost:5432/ainp'),
+  // On Netlify, URL is the site's primary address (pages and API share it).
+  appUrl: process.env.APP_URL ?? process.env.URL ?? 'http://localhost:5173',
+  apiUrl: process.env.API_URL ?? process.env.URL ?? 'http://localhost:4000',
+  // NETLIFY_DATABASE_URL is set automatically by Netlify DB (Neon).
+  databaseUrl: process.env.DATABASE_URL ?? process.env.NETLIFY_DATABASE_URL ?? (isProd ? req('DATABASE_URL') : 'postgres://ainp:ainp@localhost:5432/ainp'),
   jwtSecret: isProd ? req('JWT_SECRET') : (process.env.JWT_SECRET ?? 'dev-only-jwt-secret-change-me'),
   // 32-byte key (hex or base64) used to encrypt integration credentials at rest.
   encryptionKey: (() => {

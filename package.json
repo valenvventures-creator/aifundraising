@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:api": "tsx watch server/index.ts",
+    "dev:api": "tsx watch server/start.ts",
     "dev:web": "vite",
     "build": "vite build && tsc -p tsconfig.server.json && tsc -p tsconfig.json",
-    "start": "NODE_ENV=production tsx server/index.ts",
+    "start": "NODE_ENV=production tsx server/start.ts",
     "migrate": "tsx server/db/migrate.ts",
     "seed": "tsx server/db/seed.ts",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
+    "@netlify/blobs": "^11.1.9",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "csv-parse": "^7.0.3",
@@ -30,6 +31,7 @@
     "nodemailer": "^10.4.0",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
+    "serverless-http": "^4.0.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

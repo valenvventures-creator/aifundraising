@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import path from 'node:path';
 import fs from 'node:fs';
 import { config } from './config.js';
-import { migrate } from './db/migrate.js';
 import { errorHandler } from './lib/http.js';
 import { requireAuth } from './lib/auth.js';
 import { authRouter } from './routes/auth.js';
@@ -16,8 +15,7 @@ import { moneyRouter } from './routes/money.js';
 import { reachRouter, publicRouter } from './routes/reach.js';
 import { integrationsRouter, oauthCallbackRouter, webhooksRouter } from './routes/integrations.js';
 import { platformRouter } from './routes/platform.js';
-import { startJobs } from './jobs/runner.js';
-import { pool } from './db/pool.js';
+import { pool, rlsUnsafe } from './db/pool.js';
 
 export function createApp() {
   const app = express();
@@ -34,7 +32,10 @@ export function createApp() {
   app.use('/api', (req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     const origin = req.get('origin');
-    if (origin && ![config.appUrl, config.apiUrl].some((o) => o.startsWith(origin))) return res.status(403).json({ error: 'Cross-origin request blocked.' });
+    let sameHost = false;
+    try { sameHost = Boolean(origin) && new URL(origin!).host === req.get('host'); } catch { /* malformed origin */ }
+    const allowed = [config.appUrl, config.apiUrl, process.env.DEPLOY_PRIME_URL, process.env.DEPLOY_URL].filter(Boolean) as string[];
+    if (origin && !sameHost && !allowed.some((o) => o.startsWith(origin))) return res.status(403).json({ error: 'Cross-origin request blocked.' });
     next();
   });
 
@@ -67,14 +68,11 @@ export function createApp() {
   return app;
 }
 
-if (process.env.NODE_ENV !== 'test') {
-  const su = await pool.query(`SELECT rolsuper OR rolbypassrls AS bypass FROM pg_roles WHERE rolname = current_user`);
-  if (su.rows[0]?.bypass) {
-    const msg = 'Database role bypasses row-level security (superuser/BYPASSRLS). Connect as a normal role so tenant isolation is enforced.';
-    if (process.env.NODE_ENV === 'production') throw new Error(msg);
+/** Refuse to serve in production if tenant queries could bypass row-level security. */
+export async function assertRlsSafe() {
+  if (await rlsUnsafe()) {
+    const msg = 'Database role bypasses row-level security (superuser/BYPASSRLS) and the ainp_rls role could not be created. Connect as a normal role, or grant this role CREATEROLE so the app can create ainp_rls.';
+    if (config.isProd) throw new Error(msg);
     console.warn(`WARNING: ${msg}`);
   }
-  await migrate();
-  createApp().listen(config.port, () => console.log(`A.I. Nonprofits API listening on :${config.port}`));
-  startJobs();
 }

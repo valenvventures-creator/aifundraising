@@ -20,6 +20,7 @@ import { sendTable } from '../services/exporter.js';
 import { createDonor } from './donors.js';
 import { createGift } from './giving.js';
 import { saveAttachment } from './money.js';
+import { getFile } from '../lib/storage.js';
 import { transportFor } from '../services/email.js';
 import { fundSummaries } from '../services/ledger.js';
 
@@ -726,10 +727,10 @@ platformRouter.get('/attachments/:id', h(async (req, res) => {
   if (!a) throw notFound('File');
   const permFor: Record<string, any> = { donor: 'donors.read', expense: 'finance.read', journal: 'finance.read', unfiled_receipt: 'finance.read', bank_transaction: 'finance.read', invoice: 'finance.read', grant: 'grants.read', project: 'projects.read', impact_story: 'impact.read', event: 'events.read' };
   requirePerm(req.auth, permFor[a.entity_type] ?? 'work.read');
-  const full = path.resolve(config.storageDir, a.storage_key);
-  if (!full.startsWith(path.resolve(config.storageDir)) || !fs.existsSync(full)) throw notFound('File');
+  const data = await getFile(a.storage_key);
+  if (!data) throw notFound('File');
   res.setHeader('Content-Type', a.mime ?? 'application/octet-stream');
   res.setHeader('Content-Disposition', `${/^image\/|pdf/.test(a.mime ?? '') ? 'inline' : 'attachment'}; filename="${a.filename.replace(/"/g, '')}"`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  fs.createReadStream(full).pipe(res);
+  res.send(data);
 }));

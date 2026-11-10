@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { z } from 'zod';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { h, parse } from '../lib/http.js';
 import { withSystem, one, many } from '../db/pool.js';
 import { issueSession, clearSession, readSession, loadContext } from '../lib/auth.js';
@@ -13,7 +13,11 @@ import { config } from '../config.js';
 import { PERMISSIONS } from '../lib/permissions.js';
 
 export const authRouter = Router();
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 50, standardHeaders: true, legacyHeaders: false });
+// Key by client IP; on Netlify the real client address arrives in x-nf-client-connection-ip.
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, limit: 50, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.get('x-nf-client-connection-ip') ?? req.ip ?? req.socket.remoteAddress ?? 'unknown'),
+});
 
 const password = z.string().min(10, 'Password must be at least 10 characters');
 

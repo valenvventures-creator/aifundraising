@@ -75,7 +75,9 @@ async function advanceJourneys(db: Db, tenantId: string) {
 }
 
 // ───────── Queue processing ─────────
-async function processQueue() {
+async function processQueue(): Promise<number> {
+  // Recover jobs whose worker was stopped mid-run (e.g. a serverless time limit); handlers are idempotent.
+  await withSystem((db) => db.query(`UPDATE job_queue SET status='queued', locked_at=NULL WHERE status='running' AND locked_at < now() - interval '5 minutes'`));
   const jobs = await withSystem((db) => many(db, `UPDATE job_queue SET status='running', locked_at=now(), attempts=attempts+1 WHERE id IN (
       SELECT id FROM job_queue WHERE status='queued' AND run_at <= now() ORDER BY run_at LIMIT 10 FOR UPDATE SKIP LOCKED) RETURNING *`));
   for (const j of jobs) {
@@ -103,6 +105,7 @@ async function processQueue() {
       if (j.kind === 'email.send_campaign' && !retry) await withTenant(j.tenant_id, (db) => db.query(`UPDATE email_campaigns SET status='paused' WHERE id=$1`, [j.payload.campaignId]));
     }
   }
+  return jobs.length;
 }
 
 // ───────── Periodic automations (per tenant) ─────────

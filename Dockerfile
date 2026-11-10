@@ -6,4 +6,4 @@ COPY . .
 RUN npx vite build
 ENV NODE_ENV=production
 EXPOSE 4000
-CMD ["npx", "tsx", "server/index.ts"]
+CMD ["npx", "tsx", "server/start.ts"]

@@ -1,0 +1,44 @@
+# A.I. Nonprofits on Netlify: the web app is static (dist/), and the API runs as
+# the `api` Netlify Function. Background automations run as the `jobs` scheduled function.
+# Requires a PostgreSQL database — see README › Deploying on Netlify.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = ["server/db/migrations/**"]
+  external_node_modules = ["pdfkit", "exceljs", "pg", "nodemailer", "@anthropic-ai/sdk"]
+
+[functions.jobs]
+  schedule = "* * * * *"
+
+# Send API, webhook and email-tracking traffic to the function (original path preserved).
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/webhooks/*"
+  to = "/.netlify/functions/api/webhooks/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/t/*"
+  to = "/.netlify/functions/api/t/:splat"
+  status = 200
+  force = true
+
+# Single-page app: every other path loads the web app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

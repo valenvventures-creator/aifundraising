@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: any) { super(message); }
 }
 
-const NO_SERVER = 'Can’t reach the A.I. Nonprofits server. The web app is running without its API — it must be started with `npm start` (or Docker), not hosted as static files. See README › Deploying.';
+const NO_SERVER = 'Can’t reach the A.I. Nonprofits server. The web pages are being served without the API behind them. On Netlify, check the deploy log for the “api” function and the site’s DATABASE_URL, JWT_SECRET and ENCRYPTION_KEY settings (see README › Deploying on Netlify).';
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const isForm = body instanceof FormData;
