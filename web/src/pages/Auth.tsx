@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
-import { Button, Field, Input, Select, Checkbox, ErrorBox, Notice } from '../components/ui';
+import { Button, Field, Input, PasswordInput, Select, Checkbox, ErrorBox, Notice } from '../components/ui';
 import { dateTime } from '../lib/format';
 
 function Shell({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle?: string }) {
@@ -33,7 +33,7 @@ export function Login() {
       <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { await api.post('/auth/login', { email, password }); await reload(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
         {err && <ErrorBox error={err} />}
         <Field label="Email"><Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
-        <Field label="Password"><Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
+        <Field label="Password"><PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
         <Button variant="primary" className="w-full" loading={busy}>Sign in</Button>
       </form>
       <p className="mt-4 text-center text-sm text-slate-500">New to A.I. Nonprofits? <Link to="/signup" className="font-medium text-brand-600 hover:underline">Create your organization</Link></p>
@@ -64,11 +64,11 @@ export function Signup() {
   const nav = useNavigate();
   return (
     <Shell title="Create your organization" subtitle="Start your nonprofit operating system — fundraising, accounting, work and impact in one place.">
-      <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { await api.post('/auth/signup', v); await reload(); nav('/'); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
+      <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); const bad = passwordProblem(v.password ?? '', v.confirm ?? ''); if (bad) { setErr(bad); setBusy(false); return; } try { const { confirm, ...body } = v; await api.post('/auth/signup', body); await reload(); nav('/'); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
         {err && <ErrorBox error={err} />}
         <Field label="Your name"><Input value={v.name ?? ''} onChange={(e) => set('name', e.target.value)} required /></Field>
         <Field label="Work email"><Input type="email" value={v.email ?? ''} onChange={(e) => set('email', e.target.value)} required /></Field>
-        <Field label="Password" hint="At least 10 characters"><Input type="password" value={v.password ?? ''} onChange={(e) => set('password', e.target.value)} required minLength={10} /></Field>
+        <PasswordPair password={v.password ?? ''} confirm={v.confirm ?? ''} onPassword={(x) => set('password', x)} onConfirm={(x) => set('confirm', x)} />
         <OrgFields v={v} set={set} />
         <Button variant="primary" className="w-full" loading={busy}>Create organization</Button>
       </form>
@@ -97,14 +97,14 @@ export function NewOrganization() {
 export function AcceptInvite() {
   const { token } = useParams(); const { reload } = useSession(); const nav = useNavigate();
   const [inv, setInv] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  const [name, setName] = useState(''); const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(''); const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [busy, setBusy] = useState(false);
   useEffect(() => { api.get(`/auth/invite/${token}`).then(setInv).catch((e) => setErr(e.message)); }, [token]);
   return (
     <Shell title={inv ? `Join ${inv.org}` : 'Accept invitation'} subtitle={inv ? `Invitation for ${inv.invited_email}` : undefined}>
       {err && <ErrorBox error={err} />}
-      {inv && <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await api.post(`/auth/invite/${token}`, { name, password }); await reload(); nav('/'); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
+      {inv && <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); const bad = passwordProblem(password, confirm); if (bad) { setErr(bad); return; } setBusy(true); try { await api.post(`/auth/invite/${token}`, { name, password }); await reload(); nav('/'); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
         <Field label="Your name"><Input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
-        <Field label="Choose a password" hint="At least 10 characters"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={10} /></Field>
+        <PasswordPair label="Choose a password" password={password} confirm={confirm} onPassword={setPassword} onConfirm={setConfirm} />
         <Button variant="primary" className="w-full" loading={busy}>Accept & continue</Button>
       </form>}
     </Shell>
@@ -138,5 +138,27 @@ export function PublicEvent() {
         <p className="mt-6 text-center text-xs text-slate-400">Powered by A.I. Nonprofits</p>
       </div>
     </div>
+  );
+}
+
+export function passwordProblem(password: string, confirm: string) {
+  if (password.length < 10) return 'Password must be at least 10 characters.';
+  if (password !== confirm) return 'Passwords do not match.';
+  return null;
+}
+
+/** Password + confirmation with show/hide toggles and live match feedback. */
+export function PasswordPair({ label = 'Password', password, confirm, onPassword, onConfirm }: { label?: string; password: string; confirm: string; onPassword: (v: string) => void; onConfirm: (v: string) => void }) {
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const ok = confirm.length > 0 && confirm === password && password.length >= 10;
+  return (
+    <>
+      <Field label={label} hint={password.length > 0 && password.length < 10 ? `${10 - password.length} more character${password.length === 9 ? '' : 's'} needed` : 'At least 10 characters'}>
+        <PasswordInput autoComplete="new-password" value={password} onChange={(e) => onPassword(e.target.value)} required minLength={10} />
+      </Field>
+      <Field label="Confirm password" error={mismatch ? 'Passwords do not match.' : undefined} hint={ok ? '✓ Passwords match' : undefined}>
+        <PasswordInput autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} required aria-invalid={mismatch} />
+      </Field>
+    </>
   );
 }

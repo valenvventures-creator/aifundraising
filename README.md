@@ -24,6 +24,13 @@ Tests cover ledger balancing, scoring, tenant isolation, webhook signatures, the
 npm test
 ```
 
+## Deploying
+
+A.I. Nonprofits is **one Node.js server plus a PostgreSQL database**. The server serves the web pages *and* the `/api` endpoints from the same address.
+
+- Static-only hosts (GitHub Pages, or Netlify/Vercel static sites) will show the pages, but every action fails with “Can’t reach the A.I. Nonprofits server”. Nothing answers `/api` on those hosts.
+- Use a host that runs a Node service and offers Postgres, such as Render, Railway, Fly.io, a VPS, or anything that runs the included Dockerfile. Set the variables from `.env.example`, then `npm run build` and `npm start`. Migrations run automatically on start.
+
 ## Architecture
 
 | Layer | Choice |
