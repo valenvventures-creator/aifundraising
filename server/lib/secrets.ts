@@ -45,8 +45,25 @@ export async function getOrCreateKey(store: KeyStore, blob: string, make: () => 
 }
 
 export async function ensureNetlifySecrets(storeOverride?: KeyStore) {
+  if (!storeOverride) await ensureNetlifyDatabaseUrl();
   const missing = KEYS.filter((k) => !process.env[k.env]);
   if (!missing.length) return;
   const store: KeyStore = storeOverride ?? ((await import('@netlify/blobs')).getStore({ name: STORE }) as unknown as KeyStore);
   for (const k of missing) process.env[k.env] = await getOrCreateKey(store, k.blob, k.make);
+}
+
+/**
+ * Netlify Database provides NETLIFY_DB_URL. If a function runtime doesn't expose it
+ * as a plain environment variable, ask @netlify/database for it. (Having that package
+ * as a dependency is also what makes Netlify create the database on deploy.)
+ */
+export async function ensureNetlifyDatabaseUrl() {
+  if (process.env.DATABASE_URL || process.env.NETLIFY_DB_URL) return;
+  try {
+    const { getConnectionString } = await import('@netlify/database');
+    const url = getConnectionString();
+    if (url) process.env.NETLIFY_DB_URL = url;
+  } catch {
+    // No database for this project yet; config reports a clear setup message.
+  }
 }

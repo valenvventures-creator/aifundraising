@@ -17,6 +17,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
     "@netlify/blobs": "^11.1.9",
+    "@netlify/database": "^2.0.3",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "csv-parse": "^7.0.3",

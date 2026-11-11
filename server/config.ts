@@ -20,7 +20,7 @@ export const config = {
   databaseUrl: (() => {
     const url = process.env.DATABASE_URL ?? process.env.NETLIFY_DB_URL ?? process.env.NETLIFY_DATABASE_URL;
     if (url) return url;
-    if (isProd) throw new Error('No database configured. On Netlify, enable Netlify Database for this site (it provides NETLIFY_DB_URL); elsewhere set DATABASE_URL.');
+    if (isProd) throw new Error('No database found for this site. In Netlify open Data & Storage › Database and create one (it provides NETLIFY_DB_URL), then redeploy. On other hosts set DATABASE_URL.');
     return 'postgres://ainp:ainp@localhost:5432/ainp';
   })(),
   jwtSecret: isProd ? req('JWT_SECRET') : (process.env.JWT_SECRET ?? 'dev-only-jwt-secret-change-me'),

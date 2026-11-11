@@ -45,7 +45,7 @@ export const handler = async (event: any, context: any) => {
     return {
       statusCode: 500,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ error: `Server setup problem: ${e?.message ?? 'unknown error'}. If this keeps happening, see README › Deploying on Netlify.` }),
+      body: JSON.stringify({ error: `Server setup problem: ${String(e?.message ?? 'unknown error').replace(/\.\s*$/, '')}. If this keeps happening, see README › Deploying on Netlify.` }),
     };
   }
 };
