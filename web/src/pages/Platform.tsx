@@ -1,4 +1,4 @@
-/** Growth · Impact · Messages · Admin & Access · Ask A.I. Nonprofits */
+/** Growth · Impact · Messages · Admin & Access · Ask A.I. Fundraising */
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Send, Sparkles, Plus, Database, UserPlus, Copy, ShieldCheck } from 'lucide-react';
@@ -154,7 +154,7 @@ export function AuditLog() {
   </Card>;
 }
 
-// ───────── Ask A.I. Nonprofits ─────────
+// ───────── Ask A.I. Fundraising ─────────
 const EXAMPLES = ['Who should I call today?', 'Which donors are at risk of lapsing?', 'Where could our next $100,000 come from?', 'Which donors have not been thanked?', 'What receipts still need to be sent?', 'Show our restricted-fund balances.',
   'How much did we spend from the Missions fund this quarter?', 'What grant deadlines are coming up?', 'Which tasks are overdue?', 'Which campaigns generated gifts?', 'Which donors near Nashville should I meet with?', 'What is our year-to-date giving?', 'Compare this month with last month.', 'Which programs are over budget?'];
 export function Ask() {
@@ -169,7 +169,7 @@ export function Ask() {
     else setMsgs((m) => m.slice(0, -1));
   };
   return <>
-    <PageHeader title={<span className="flex items-center gap-2"><Sparkles className="h-6 w-6 text-violet-600" />Ask A.I. Nonprofits</span>} subtitle="Ask questions about the information you're authorized to see. Answers cite the records behind them. Ask can analyze, explain and recommend — it cannot send, post, edit or move anything." />
+    <PageHeader title={<span className="flex items-center gap-2"><Sparkles className="h-6 w-6 text-violet-600" />Ask A.I. Fundraising</span>} subtitle="Ask questions about the information you're authorized to see. Answers cite the records behind them. Ask can analyze, explain and recommend — it cannot send, post, edit or move anything." />
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
       <Card padded={false} className="flex min-h-[560px] flex-col">
         <div className="flex-1 space-y-4 overflow-y-auto p-5">

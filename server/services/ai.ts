@@ -13,7 +13,7 @@ export function claude(): Anthropic | null {
   return client;
 }
 
-export const BASE_SYSTEM = `You are the writing and analysis assistant inside A.I. Nonprofits, a nonprofit operating system.
+export const BASE_SYSTEM = `You are the writing and analysis assistant inside A.I. Fundraising, a nonprofit operating system.
 You produce drafts and explanations for nonprofit staff. You never claim to have sent, posted, saved or changed anything —
 a person reviews your output and decides what to do with it. Be accurate: only state facts that appear in the provided data;
 when you estimate or recommend, say so. Keep donor information confidential and respectful.`;
@@ -75,7 +75,7 @@ export function templateDraft(kind: string, ctx: { orgName: string; donorFirst?:
     case 'thank_you':
       return `${hi}\n\nThank you for your generous gift${ctx.amount ? ` of ${ctx.amount}` : ''}${ctx.fund ? ` to ${ctx.fund}` : ''}. Because of you, ${ctx.orgName} can keep showing up for the people we serve.${bless}${extra}\n\nYou are a vital part of this work, and we are so grateful.${sign}`;
     case 'call_script':
-      return `CALL SCRIPT — ${ctx.donorName ?? 'Donor'}\n\n1. Greeting: “Hi ${ctx.donorFirst ?? 'there'}, this is ${ctx.senderName} from ${ctx.orgName}. Do you have a few minutes?”\n2. Gratitude: Thank them${ctx.lastGift ? ` for their gift on ${ctx.lastGift}` : ' for their support'}.\n3. Listen: “What drew you to support ${ctx.orgName}?” — note what they say.\n4. Share impact: one specific story or number from this quarter.${ctx.context ? `\n   Context: ${ctx.context}` : ''}\n5. Ask${ctx.ask ? `: “Would you consider a gift of ${ctx.ask}${ctx.campaign ? ` toward ${ctx.campaign}` : ''}?”` : ': invite their next step.'} Then pause.\n6. Close: confirm next step and follow-up date. Log the call in A.I. Nonprofits.`;
+      return `CALL SCRIPT — ${ctx.donorName ?? 'Donor'}\n\n1. Greeting: “Hi ${ctx.donorFirst ?? 'there'}, this is ${ctx.senderName} from ${ctx.orgName}. Do you have a few minutes?”\n2. Gratitude: Thank them${ctx.lastGift ? ` for their gift on ${ctx.lastGift}` : ' for their support'}.\n3. Listen: “What drew you to support ${ctx.orgName}?” — note what they say.\n4. Share impact: one specific story or number from this quarter.${ctx.context ? `\n   Context: ${ctx.context}` : ''}\n5. Ask${ctx.ask ? `: “Would you consider a gift of ${ctx.ask}${ctx.campaign ? ` toward ${ctx.campaign}` : ''}?”` : ': invite their next step.'} Then pause.\n6. Close: confirm next step and follow-up date. Log the call in A.I. Fundraising.`;
     case 'proposal':
       return `PROPOSAL FOR ${(ctx.donorName ?? 'Partner').toUpperCase()}\n\nThe opportunity\n${ctx.context || `${ctx.orgName} is expanding its reach this year.`}\n\nYour partnership\nWe invite you to consider an investment of ${ctx.ask ?? '[amount]'}${ctx.fund ? ` designated to ${ctx.fund}` : ''}.\n\nWhat it makes possible\n• [Outcome 1]\n• [Outcome 2]\n• [Outcome 3]\n\nHow we will report back\nQuarterly impact updates and an annual summary.${sign}`;
     case 'appeal': case 'campaign_message':

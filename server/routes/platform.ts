@@ -285,7 +285,7 @@ platformRouter.post('/admin/invite', h(async (req, res) => {
     const link = `${config.appUrl}/invite/${token}`;
     let emailed = false;
     const tr = await transportFor(db, req.auth!.userId);
-    if (tr) { const org = await one(db, `SELECT name FROM tenants WHERE id=$1`, [req.auth!.tenantId]); await tr.t.sendMail({ from: tr.from, to: b.email, subject: `You're invited to ${org.name} on A.I. Nonprofits`, text: `${req.auth!.name} invited you to join ${org.name}.\n\nAccept: ${link}` }).then(() => { emailed = true; }).catch(() => {}); }
+    if (tr) { const org = await one(db, `SELECT name FROM tenants WHERE id=$1`, [req.auth!.tenantId]); await tr.t.sendMail({ from: tr.from, to: b.email, subject: `You're invited to ${org.name} on A.I. Fundraising`, text: `${req.auth!.name} invited you to join ${org.name}.\n\nAccept: ${link}` }).then(() => { emailed = true; }).catch(() => {}); }
     await audit(db, actor(req), 'admin', 'invite', `Invited ${b.email} as ${role.name}`, { type: 'membership', id: m.id });
     return { link, emailed };
   });
@@ -403,7 +403,7 @@ platformRouter.get('/backup', h(async (req, res) => {
     const rows = data[table]; const cols = rows[0] ? Object.keys(rows[0]) : [];
     return sendTable(res, 'csv', `${table}-backup-${today()}`, cols.map((c) => ({ key: c, label: c })), rows);
   }
-  res.setHeader('Content-Disposition', `attachment; filename="ai-nonprofits-backup-${today()}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="ai-fundraising-backup-${today()}.json"`);
   res.json({ exportedAt: new Date().toISOString(), version: 1, tables: data });
 }));
 

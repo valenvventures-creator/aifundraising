@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: any) { super(message); }
 }
 
-const NO_SERVER = 'Can’t reach the A.I. Nonprofits server. The web pages are being served without the API behind them. On Netlify, check the deploy log for the “api” function and the site’s DATABASE_URL, JWT_SECRET and ENCRYPTION_KEY settings (see README › Deploying on Netlify).';
+const NO_SERVER = 'Can’t reach the A.I. Fundraising server. The web pages are being served without the API behind them. On Netlify, check the deploy log for the “api” function and the site’s DATABASE_URL, JWT_SECRET and ENCRYPTION_KEY settings (see README › Deploying on Netlify).';
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const isForm = body instanceof FormData;
@@ -22,7 +22,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   const ct = res.headers.get('content-type') ?? '';
   const data = ct.includes('json') ? await res.json() : await res.text();
   if (!res.ok) {
-    // A non-JSON 404/405/502 means the web pages were served without the A.I. Nonprofits API behind them.
+    // A non-JSON 404/405/502 means the web pages were served without the A.I. Fundraising API behind them.
     if (!ct.includes('json') && [404, 405, 502, 503, 504].includes(res.status)) throw new ApiError(res.status, NO_SERVER);
     if (res.status === 401 && !url.startsWith('/auth')) window.dispatchEvent(new CustomEvent('ainp:unauthorized'));
     throw new ApiError(res.status, (data as any)?.error ?? `Request failed (${res.status})`, (data as any)?.details);

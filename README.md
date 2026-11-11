@@ -1,6 +1,6 @@
-# A.I. Nonprofits — by Thought Authorities
+# A.I. Fundraising — by Thought Authorities
 
-A multi-tenant nonprofit operating system: donor CRM and fundraising intelligence, giving and receipts, true fund accounting, grants, projects, events, email (“A.I. Nonprofits Reach”), work and time, growth, impact, internal messages, admin/RBAC, and the permission-aware **Ask A.I. Nonprofits** question portal.
+A multi-tenant nonprofit operating system: donor CRM and fundraising intelligence, giving and receipts, true fund accounting, grants, projects, events, email (“A.I. Fundraising Reach”), work and time, growth, impact, internal messages, admin/RBAC, and the permission-aware **Ask A.I. Fundraising** question portal.
 
 > AI here only **reads, explains, calculates, recommends and drafts**. It never sends email, texts or calls, posts or approves accounting entries, moves money, edits donor records, invites users or publishes anything. Every consequential action is a normal button pressed by a person, and AI drafts stay drafts until someone saves, sends or applies them.
 
@@ -12,7 +12,7 @@ Requirements: Node 20+ and PostgreSQL 14+ (16 recommended).
 cp .env.example .env          # set DATABASE_URL, ENCRYPTION_KEY, JWT_SECRET
 npm install
 npm run migrate
-npm run seed                  # optional demo org — demo@ainonprofits.org / demo-password-123
+npm run seed                  # optional demo org — demo@aifundraising.org / demo-password-123
 npm run dev                   # API on :4000, web on :5173
 ```
 
@@ -26,11 +26,11 @@ npm test
 
 ## Deploying on Netlify
 
-A.I. Nonprofits uses the same model as the other Thought Authorities sites (A.I. C-Suite and A.I. IPO): **Netlify Functions** for the app, **Netlify Database** for accounts and data, and **Netlify Blobs** for uploaded files and keys.
+A.I. Fundraising uses the same model as the other Thought Authorities sites (A.I. C-Suite and A.I. IPO): **Netlify Functions** for the app, **Netlify Database** for accounts and data, and **Netlify Blobs** for uploaded files and keys.
 
 The functions use Netlify's modern format (`export default` with a `config` route), like A.I. IPO. The build compiles the server into `netlify/server-dist/app.mjs` (`npm run build:netlify`). `netlify/functions/api.mts` serves `/api/*`, `/webhooks/*` and `/t/*`, and `netlify/functions/jobs.mts` runs the automations every minute.
 
-1. In Netlify, choose **Add new project → Import an existing project → GitHub → `ainonprofits`**, or link the repository to an existing project. `netlify.toml` sets up the build, so leave the build command and publish directory empty in the Netlify UI.
+1. In Netlify, choose **Add new project → Import an existing project → GitHub → your repository**, or link the repository to an existing project. `netlify.toml` sets up the build, so leave the build command and publish directory empty in the Netlify UI.
 2. **Netlify Database is set up automatically on deploy**, because the project depends on `@netlify/database` and has a migration in `netlify/database/migrations/` (the same convention as the other sites). If no database appears, create one in Netlify under **Data & Storage → Database** and redeploy. Netlify then provides `NETLIFY_DB_URL`, and the app creates the rest of its tables on first use. Netlify Database requires a credit-based Netlify plan.
 3. **Deploy.** Every build runs the test suite first, and a failing test stops the deploy.
 
@@ -41,14 +41,14 @@ You don't need to set any variables to get started. Open the site and choose **C
 | Variable | Purpose |
 | --- | --- |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Turns on password-reset, invitation, receipt and campaign emails. These are the same names as the other sites. `EMAIL_FROM` must use a domain verified in Resend. |
-| `ANTHROPIC_API_KEY` | Turns on AI answers in Ask A.I. Nonprofits and AI-written drafts. Without it, those features use built-in reports and templates. |
+| `ANTHROPIC_API_KEY` | Turns on AI answers in Ask A.I. Fundraising and AI-written drafts. Without it, those features use built-in reports and templates. |
 | `JWT_SECRET`, `ENCRYPTION_KEY` | Your own keys. If they're unset, each is generated once and kept in a private Netlify Blobs store, separate from the database. **Never change or delete `ENCRYPTION_KEY` once data exists**, or saved integration credentials become unreadable. |
 | `QBO_*`, `GOOGLE_*`, `PLAID_*` | QuickBooks, Google (Gmail/Calendar/Maps) and bank-feed connections. See `.env.example`. |
 | `DATABASE_URL` | Use your own PostgreSQL database instead of Netlify Database. |
 
 **Email.** Without Resend (or a user's connected Gmail), the app still works. *Forgot password* explains that email isn't set up and never shows reset links on screen, and invitations give the administrator a private link to share.
 
-**Demo data (optional).** From a computer with this repository, run `DATABASE_URL="<connection string>" npm run seed`, then sign in as `demo@ainonprofits.org` / `demo-password-123`.
+**Demo data (optional).** From a computer with this repository, run `DATABASE_URL="<connection string>" npm run seed`, then sign in as `demo@aifundraising.org` / `demo-password-123`.
 
 **Netlify limits.**
 - **Requests:** each request has about 10 seconds on standard plans (Netlify support can raise it to 26). AI answers and drafts, very large exports and big imports may need longer.
@@ -75,14 +75,14 @@ The app is also a single Node.js server plus PostgreSQL that serves the pages an
 Key folders:
 - `server/services/ledger.ts`: double-entry posting. **Every line must name a fund, and each fund must balance on its own**, so every fund balance can be traced to ledger lines. Gifts, expenses, payroll, invoices, bank items and refunds all post through this module.
 - `server/services/intelligence.ts`: donor health, the 0–100 opportunity score (Capacity, Recency, Frequency, Recent Giving, Engagement, Momentum), suggested asks with their basis, and the Next $100K categories. These are deterministic, configurable in Settings › Fundraising rules, and never produced by AI.
-- `server/services/ask.ts`: Ask A.I. Nonprofits. **Read-only tools only**, filtered by the user's permissions and workspace access. Answers return citations that link to the underlying records.
+- `server/services/ask.ts`: Ask A.I. Fundraising. **Read-only tools only**, filtered by the user's permissions and workspace access. Answers return citations that link to the underlying records.
 - `server/services/integrations.ts` and `server/routes/integrations.ts`: QuickBooks, Stripe, Square, PayPal, Google and Plaid.
 - `server/routes/resources.ts`: generic, permission-aware CRUD for simpler entities.
 - `web/src/pages/*`: the screens.
 
 ## Modules (navigation)
 
-**Home** (workspace cards plus an aggregate dashboard and onboarding checklist) · **Donors** (Donors & Giving: Overview / Donors / Priorities / Trips / Outreach / Campaigns / Growth Audit / Reports / Receipts; Grants; Projects; Email; Events) · **Money** (Accounting: Overview, Transactions, Post Giving, Snap & Receipt, Spend, Funds, Chart of Accounts, Budgets, Bank Feed, Journals, Giving & Receipts, Integrations, Import/Sync, Settings; Payroll; Invoices; Reports; Updates) · **Work** (Tasks, Client Work, Calendar, Communications, Time Log) · **Growth** · **Impact** · **Messages** · **Admin & Access** · **Settings** · **Ask A.I. Nonprofits**. Quick Find opens with ⌘K, Ctrl-K or `/`.
+**Home** (workspace cards plus an aggregate dashboard and onboarding checklist) · **Donors** (Donors & Giving: Overview / Donors / Priorities / Trips / Outreach / Campaigns / Growth Audit / Reports / Receipts; Grants; Projects; Email; Events) · **Money** (Accounting: Overview, Transactions, Post Giving, Snap & Receipt, Spend, Funds, Chart of Accounts, Budgets, Bank Feed, Journals, Giving & Receipts, Integrations, Import/Sync, Settings; Payroll; Invoices; Reports; Updates) · **Work** (Tasks, Client Work, Calendar, Communications, Time Log) · **Growth** · **Impact** · **Messages** · **Admin & Access** · **Settings** · **Ask A.I. Fundraising**. Quick Find opens with ⌘K, Ctrl-K or `/`.
 
 The workspace label (Ministry, Organization, Program, Chapter, Campus, and so on) is configurable per organization.
 

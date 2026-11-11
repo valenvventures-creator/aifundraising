@@ -18,7 +18,7 @@ export async function sendTable(res: Response, format: 'csv' | 'xlsx', name: str
   const safeName = name.replace(/[^\w.\- ]/g, '_');
   if (format === 'xlsx') {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'A.I. Nonprofits';
+    wb.creator = 'A.I. Fundraising';
     const ws = wb.addWorksheet(name.slice(0, 31));
     ws.columns = columns.map((c) => ({ header: c.label, key: c.key, width: Math.min(40, Math.max(12, c.label.length + 4)) }));
     ws.getRow(1).font = { bold: true };

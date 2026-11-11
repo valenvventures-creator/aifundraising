@@ -22,7 +22,7 @@ export const PERMISSIONS = {
   'reports.read': 'Run reports and weekly updates',
   'data.export': 'Export data (CSV/XLSX/PDF/JSON backups)',
   'data.import': 'Import and migrate data',
-  'ai.ask': 'Use Ask A.I. Nonprofits and draft generation',
+  'ai.ask': 'Use Ask A.I. Fundraising and draft generation',
   'integrations.manage': 'Connect and configure integrations',
   'settings.manage': 'Manage organization settings',
   'admin.users': 'Invite users, assign roles and workspace access',

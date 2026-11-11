@@ -13,7 +13,7 @@ const INDIGO = '#4f46e5', GRAY = '#6b7280', DARK = '#111827';
 
 /** Render a branded document. All exported PDFs share this layout. */
 export function renderPdf(res: Response, filename: string, opts: { title: string; subtitle?: string; org?: string; blocks: PdfBlock[] }) {
-  const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true, info: { Title: opts.title, Producer: 'A.I. Nonprofits' } });
+  const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true, info: { Title: opts.title, Producer: 'A.I. Fundraising' } });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/[^\w.\- ]/g, '_')}"`);
   doc.pipe(res);

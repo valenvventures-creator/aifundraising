@@ -37,7 +37,7 @@ function AuthedApp() {
   if (loc.pathname.startsWith('/invite/')) return <Routes><Route path="/invite/:token" element={<AcceptInvite />} /></Routes>;
   if (loc.pathname.startsWith('/reset-password/')) return <Routes><Route path="/reset-password/:token" element={<ResetPassword />} /></Routes>;
   if (loc.pathname === '/forgot-password') return <ForgotPassword />;
-  if (loading) return <Spinner label="Loading A.I. Nonprofits…" />;
+  if (loading) return <Spinner label="Loading A.I. Fundraising…" />;
   if (!me) return <Routes><Route path="/" element={<Landing />} /><Route path="/signup" element={<Signup />} /><Route path="*" element={<Login />} /></Routes>;
   if (!me.tenant) return <div className="mx-auto max-w-xl p-8"><NewOrganization /></div>;
   return (

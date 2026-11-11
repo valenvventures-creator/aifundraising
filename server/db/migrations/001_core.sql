@@ -1,4 +1,4 @@
--- A.I. Nonprofits — core schema
+-- A.I. Fundraising — core schema
 -- Every tenant-owned table carries tenant_id and is protected by row-level security.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

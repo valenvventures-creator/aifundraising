@@ -1,5 +1,5 @@
 /**
- * Ask A.I. Nonprofits — permission-aware question answering.
+ * Ask A.I. Fundraising — permission-aware question answering.
  *
  * The assistant can only READ through the tools below. Every tool runs inside
  * the caller's tenant transaction (RLS) and applies the caller's workspace and
@@ -230,12 +230,12 @@ const TOOLS: ToolDef[] = [
 export function toolsFor(ctx: AuthContext) { return TOOLS.filter((t) => ctx.permissions.has(t.perm)); }
 
 const ASK_SYSTEM = `${BASE_SYSTEM}
-You are “Ask A.I. Nonprofits”, a question-answering portal. Use the provided read-only tools to look up the organization's data
+You are “Ask A.I. Fundraising”, a question-answering portal. Use the provided read-only tools to look up the organization's data
 before answering. Today is ${'{TODAY}'}. Rules:
 - Only answer from tool results. If data is missing or the user lacks access, say so plainly.
 - Show key numbers and name the records you used. Keep answers concise and scannable (short paragraphs or bullet lists).
 - Clearly label recommendations as suggestions. Never claim you took an action; you cannot send, post, edit or move money.
-- If asked to do something consequential (send an email, post an entry, change a record), explain which button in A.I. Nonprofits does it.`;
+- If asked to do something consequential (send an email, post an entry, change a record), explain which button in A.I. Fundraising does it.`;
 
 export interface AskAnswer { answer: string; citations: Citation[]; engine: 'claude' | 'rules'; toolsUsed: string[]; data?: unknown }
 

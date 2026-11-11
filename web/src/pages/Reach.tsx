@@ -1,4 +1,4 @@
-/** A.I. Nonprofits Reach — Campaigns · Audiences · Journeys · Templates · Grow · Analytics · Settings */
+/** A.I. Fundraising Reach — Campaigns · Audiences · Journeys · Templates · Grow · Analytics · Settings */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { Heading1, Type, Image, MousePointerClick, HandCoins, Video, Minus, Trash2, ArrowUp, ArrowDown, Sparkles, Send, Clock, Save, Copy, Plus } from 'lucide-react';
@@ -12,7 +12,7 @@ import { money, num, date, dateTime, label, pct } from '../lib/format';
 
 export function ReachShell() {
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-serif text-xl font-bold text-slate-800">A.I. Nonprofits Reach</h2></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-serif text-xl font-bold text-slate-800">A.I. Fundraising Reach</h2></div>
     <PillTabs tabs={['campaigns', 'audiences', 'journeys', 'templates', 'grow', 'analytics', 'settings'].map((t) => ({ to: `/donors/email/${t}`, label: label(t) }))} />
     <Outlet />
   </div>;

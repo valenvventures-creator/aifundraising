@@ -7,7 +7,7 @@ import { config } from './config.js';
 async function main() {
   await migrate();
   await assertRlsSafe();
-  createApp().listen(config.port, () => console.log(`A.I. Nonprofits API listening on :${config.port}`));
+  createApp().listen(config.port, () => console.log(`A.I. Fundraising API listening on :${config.port}`));
   startJobs();
 }
 main().catch((e) => { console.error(e); process.exit(1); });

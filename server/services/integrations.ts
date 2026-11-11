@@ -136,7 +136,7 @@ export async function qboPushEntry(db: Db, tenantId: string, entryId: string) {
     await db.query(`UPDATE sync_records SET status='error', error=$2, attempts=attempts+1, updated_at=now() WHERE id=$1`, [rec.id, `Unmapped account(s): ${unmapped.join(', ')}. Map them in Import/Sync › QuickBooks mappings.`]);
     return;
   }
-  const body = { TxnDate: entry.entry_date, PrivateNote: `${entry.memo ?? ''} [A.I. Nonprofits ${entryId.slice(0, 8)}]`.slice(0, 4000), DocNumber: `AINP-${entryId.slice(0, 8)}`,
+  const body = { TxnDate: entry.entry_date, PrivateNote: `${entry.memo ?? ''} [A.I. Fundraising ${entryId.slice(0, 8)}]`.slice(0, 4000), DocNumber: `AINP-${entryId.slice(0, 8)}`,
     Line: lines.map((l) => ({ DetailType: 'JournalEntryLineDetail', Amount: round2(Number(l.debit) || Number(l.credit)), Description: l.description ?? undefined,
       JournalEntryLineDetail: { PostingType: Number(l.debit) > 0 ? 'Debit' : 'Credit', AccountRef: { value: l.qbo_account }, ...(l.qbo_class ? { ClassRef: { value: l.qbo_class } } : {}) } })) };
   try {

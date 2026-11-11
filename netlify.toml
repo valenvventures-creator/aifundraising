@@ -1,4 +1,4 @@
-# A.I. Nonprofits on Netlify — same model as the other Thought Authorities sites:
+# A.I. Fundraising on Netlify — same model as the other Thought Authorities sites:
 # Netlify Functions (app), Netlify Database (accounts and data, provisioned from
 # netlify/database/migrations on deploy) and Netlify Blobs (files and keys).
 # The web app is static (dist/); the API is the `api` function; automations run in `jobs`.

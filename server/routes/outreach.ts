@@ -107,7 +107,7 @@ outreachRouter.post('/opportunity-summary', h(async (req, res) => {
   res.json(out);
 }));
 
-// ───────── Ask A.I. Nonprofits ─────────
+// ───────── Ask A.I. Fundraising ─────────
 outreachRouter.post('/ask', h(async (req, res) => {
   requirePerm(req.auth, 'ai.ask');
   const b = parse(z.object({ question: z.string().min(2).max(2000), history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })).max(12).default([]) }), req.body);

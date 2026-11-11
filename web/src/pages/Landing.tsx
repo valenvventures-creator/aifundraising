@@ -111,7 +111,7 @@ function HeroChart() {
 
 /* ---------------- Content ---------------- */
 
-const MARQUEE = ['Donor intelligence', 'True fund accounting', 'Tax receipts', 'Grant pipeline', 'Email campaigns & journeys', 'Events & ticketing', 'Payroll', 'Invoices', 'Bank feed', 'QuickBooks sync', 'Stripe · Square · PayPal', 'Budgets vs. actual', 'Board-ready reports', 'Impact stories', 'Donor trips & routes', 'Ask A.I. Nonprofits'];
+const MARQUEE = ['Donor intelligence', 'True fund accounting', 'Tax receipts', 'Grant pipeline', 'Email campaigns & journeys', 'Events & ticketing', 'Payroll', 'Invoices', 'Bank feed', 'QuickBooks sync', 'Stripe · Square · PayPal', 'Budgets vs. actual', 'Board-ready reports', 'Impact stories', 'Donor trips & routes', 'Ask A.I. Fundraising'];
 
 const BEFORE_AFTER: { title: string; before: string; after: string }[] = [
   { title: 'Who to call this week', before: 'A gut feeling and a spreadsheet nobody has updated since spring.', after: 'A ranked list scored on capacity, recency, frequency, giving, engagement and momentum, with the reason for every suggested ask.' },
@@ -167,7 +167,7 @@ const STAGES: Stage[] = [
     ),
   },
   {
-    key: 'reach', label: 'Email', icon: Mail, eyebrow: 'A.I. Nonprofits Reach', title: 'Campaigns and journeys your donors actually open.',
+    key: 'reach', label: 'Email', icon: Mail, eyebrow: 'A.I. Fundraising Reach', title: 'Campaigns and journeys your donors actually open.',
     body: 'Build emails with a visual editor, send to smart audiences, and set up welcome and thank-you journeys. A person always presses send.',
     points: ['Audiences from giving history, tags and engagement', 'Welcome, lapsed-donor and year-end journeys', 'Open and click analytics, clearly labeled as estimates'],
     mock: () => (
@@ -206,7 +206,7 @@ const STAGES: Stage[] = [
     ),
   },
   {
-    key: 'ask', label: 'Ask', icon: MessageCircleQuestion, eyebrow: 'Ask A.I. Nonprofits', title: 'Ask a question. Get an answer with sources.',
+    key: 'ask', label: 'Ask', icon: MessageCircleQuestion, eyebrow: 'Ask A.I. Fundraising', title: 'Ask a question. Get an answer with sources.',
     body: 'Ask in plain English and get answers drawn only from records you are allowed to see, each linked back to the source. It reads and explains; it never changes anything.',
     points: ['Answers cite the donors, gifts and entries they came from', 'Respects every role, permission and workspace', 'Drafts letters and emails that stay drafts until a person acts'],
     mock: () => (
@@ -223,7 +223,7 @@ const STAGES: Stage[] = [
 ];
 
 const FAQ: [string, string][] = [
-  ['Does the A.I. ever send emails or change records on its own?', 'No. A.I. in A.I. Nonprofits reads, explains, calculates, recommends and drafts. Sending email, posting accounting entries, moving money, editing donor records and inviting users are always buttons a person presses, and drafts stay drafts until someone acts.'],
+  ['Does the A.I. ever send emails or change records on its own?', 'No. A.I. in A.I. Fundraising reads, explains, calculates, recommends and drafts. Sending email, posting accounting entries, moving money, editing donor records and inviting users are always buttons a person presses, and drafts stay drafts until someone acts.'],
   ['Is this real fund accounting?', 'Yes. Every ledger line names a fund and each fund must balance on its own. Restricted-fund overdrafts are blocked unless an approver overrides, endowment principal is protected, and posted entries are voided rather than deleted.'],
   ['Can it work with the tools we already use?', 'It connects to QuickBooks Online, Stripe, Square, PayPal, Google (Gmail and Calendar) and Plaid bank feeds, and imports donors and gifts from CSV exports of most CRMs.'],
   ['How is our donor data protected?', 'Each organization is isolated at the database level, so one organization can never see another\'s rows. Access is controlled by 30 separate permissions, sensitive actions are recorded in an activity history, and card numbers are never stored.'],
@@ -242,7 +242,7 @@ export function Landing() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = 'A.I. Nonprofits · The operating system for nonprofits';
+    document.title = 'A.I. Fundraising · The operating system for nonprofits';
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -267,9 +267,9 @@ export function Landing() {
     <div className="lp" ref={root}>
       <header className={`lp-nav${scrolled ? ' is-scrolled' : ''}`}>
         <div className="lp-wrap lp-nav-in">
-          <Link to="/" className="lp-brand" aria-label="A.I. Nonprofits home">
+          <Link to="/" className="lp-brand" aria-label="A.I. Fundraising home">
             <img src="/logo-crest.webp" alt="" />
-            <span><b>A.I. Nonprofits</b><small>by Thought Authorities</small></span>
+            <span><b>A.I. Fundraising</b><small>by Thought Authorities</small></span>
           </Link>
           <nav className="lp-links" aria-label="Sections">{nav.map(([h, l]) => <a key={h} href={h}>{l}</a>)}</nav>
           <div className="lp-nav-cta">
@@ -369,7 +369,7 @@ export function Landing() {
 
       <footer className="lp-foot">
         <div className="lp-wrap">
-          <span>© {new Date().getFullYear()} Thought Authorities · A.I. Nonprofits</span>
+          <span>© {new Date().getFullYear()} Thought Authorities · A.I. Fundraising</span>
           <nav><a href="#platform">Platform</a><a href="#trust">Trust</a><Link to="/login">Sign in</Link><Link to="/signup">Get started</Link></nav>
         </div>
       </footer>
@@ -398,14 +398,14 @@ function BeforeAfter() {
         </div>
         <div className="lp-switch-row" data-reveal data-delay="100">
           <span className={after ? '' : 'on'}>Today</span>
-          <button type="button" role="switch" aria-checked={after} aria-label="Show with A.I. Nonprofits" className="lp-switch" onClick={flip} />
-          <span className={after ? 'on' : ''}>After A.I. Nonprofits</span>
+          <button type="button" role="switch" aria-checked={after} aria-label="Show with A.I. Fundraising" className="lp-switch" onClick={flip} />
+          <span className={after ? 'on' : ''}>After A.I. Fundraising</span>
         </div>
         <div ref={ref} className={`lp-ba${after ? ' is-after' : ''}`} aria-live="polite">
           {BEFORE_AFTER.map((b, i) => (
             <div key={b.title} className="lp-ba-card" data-reveal data-delay={i * 90}>
               <div className="lp-ba-face before" aria-hidden={after}><span className="lp-tag bad">Today</span><h3>{b.title}</h3><p>{b.before}</p></div>
-              <div className="lp-ba-face after" aria-hidden={!after}><span className="lp-tag good">After A.I. Nonprofits</span><h3>{b.title}</h3><p>{b.after}</p></div>
+              <div className="lp-ba-face after" aria-hidden={!after}><span className="lp-tag good">After A.I. Fundraising</span><h3>{b.title}</h3><p>{b.after}</p></div>
             </div>
           ))}
         </div>
@@ -579,7 +579,7 @@ function Bento() {
         <div className="lp-bento">
           <div className="lp-card span-4 wide dark" data-reveal onPointerMove={glow}>
             <span className="lp-ic lp-ic-gold"><Sparkles size={18} /></span>
-            <h3>Ask A.I. Nonprofits</h3>
+            <h3>Ask A.I. Fundraising</h3>
             <p>Your always-available analyst. Ask about giving, funds, grants or events and get answers with links to the records behind them, limited to what you are allowed to see.</p>
             <div className="lp-chips"><span>“How much is left in the Clean Water fund?”</span><span>“Who are our top 10 lapsed donors?”</span><span>“Draft a thank-you to the Okafors”</span></div>
           </div>

@@ -259,7 +259,7 @@ export function DraftModal({ open, onClose, kind, donorId, ministryId, context: 
       footer={draft ? <>
         <Button icon={<Copy className="h-4 w-4" />} onClick={() => { navigator.clipboard.writeText(content); push('success', 'Copied to clipboard'); }}>Copy</Button>
         <Button icon={<Save className="h-4 w-4" />} onClick={() => run(() => api.patch(`/r/drafts/${draft.id}`, { content }), 'Draft saved')}>Save draft</Button>
-        <Button variant="primary" onClick={onClose}>Done</Button></> : <><Button onClick={onClose}>Cancel</Button><Button variant="primary" icon={<Sparkles className="h-4 w-4" />} loading={busy} onClick={generate}>Generate with A.I. Nonprofits</Button></>}>
+        <Button variant="primary" onClick={onClose}>Done</Button></> : <><Button onClick={onClose}>Cancel</Button><Button variant="primary" icon={<Sparkles className="h-4 w-4" />} loading={busy} onClick={generate}>Generate with A.I. Fundraising</Button></>}>
       {!draft ? (
         <div className="space-y-3">
           <Field label="Anything specific to include? (optional)"><Textarea rows={3} value={ctx} onChange={(e) => setCtx(e.target.value)} placeholder="e.g. mention the new youth center opening in March" /></Field>

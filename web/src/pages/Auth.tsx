@@ -11,7 +11,7 @@ function Shell({ children, title, subtitle }: { children: React.ReactNode; title
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex flex-col items-center text-center">
           <img src="/logo-crest.webp" alt="Thought Authorities" className="h-24 w-24 rounded-2xl bg-white object-contain p-1.5 shadow-lg" />
-          <div className="mt-4 font-serif text-3xl font-bold tracking-wide text-gold-400">A.I. Nonprofits</div>
+          <div className="mt-4 font-serif text-3xl font-bold tracking-wide text-gold-400">A.I. Fundraising</div>
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">by Thought Authorities</div>
         </Link>
         <div className="rounded-2xl bg-white p-6 shadow-2xl">
@@ -37,7 +37,7 @@ export function Login() {
         <div className="-mt-1 text-right"><Link to="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">Forgot password?</Link></div>
         <Button variant="primary" className="w-full" loading={busy}>Sign in</Button>
       </form>
-      <p className="mt-4 text-center text-sm text-slate-500">New to A.I. Nonprofits? <Link to="/signup" className="font-medium text-brand-600 hover:underline">Create your organization</Link></p>
+      <p className="mt-4 text-center text-sm text-slate-500">New to A.I. Fundraising? <Link to="/signup" className="font-medium text-brand-600 hover:underline">Create your organization</Link></p>
     </Shell>
   );
 }
@@ -170,7 +170,7 @@ export function PublicEvent() {
               <Button variant="primary" className="w-full" loading={busy}>Register</Button>
             </form>}
         </>}
-        <p className="mt-6 text-center text-xs text-slate-400">Powered by A.I. Nonprofits</p>
+        <p className="mt-6 text-center text-xs text-slate-400">Powered by A.I. Fundraising</p>
       </div>
     </div>
   );

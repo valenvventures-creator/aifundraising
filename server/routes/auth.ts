@@ -131,7 +131,7 @@ authRouter.post('/forgot', limiter, h(async (req, res) => {
       await db.query(`INSERT INTO password_reset_tokens(user_id, token_hash, expires_at) VALUES ($1,$2, now() + interval '30 minutes')`, [u.id, sha256(token)]);
       const link = `${config.appUrl}/reset-password/${token}`;
 try {
-      await tr.t.sendMail({ from: tr.from, to: u.email, subject: 'Reset your A.I. Nonprofits password',
+      await tr.t.sendMail({ from: tr.from, to: u.email, subject: 'Reset your A.I. Fundraising password',
         text: `Hello ${u.name},\n\nUse this link within 30 minutes to choose a new password:\n${link}\n\nIf you didn't ask for this, you can ignore this email.`,
         html: `<p>Hello ${u.name.replace(/[<>&]/g, '')},</p><p><a href="${link}">Choose a new password</a>. The link works for 30 minutes and only once.</p><p>If you didn't ask for this, you can ignore this email.</p>` });
       } catch (e: any) {

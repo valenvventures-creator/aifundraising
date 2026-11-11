@@ -16,14 +16,14 @@ const NAV = [
   { to: '/messages', label: 'Messages', icon: MessageSquare, perm: ['messages.use'] },
   { to: '/admin', label: 'Admin & Access', icon: ShieldCheck, perm: ['admin.users', 'audit.read'] },
   { to: '/settings', label: 'Settings', icon: Settings },
-  { to: '/ask', label: 'Ask A.I. Nonprofits', icon: Sparkles, perm: ['ai.ask'] },
+  { to: '/ask', label: 'Ask A.I. Fundraising', icon: Sparkles, perm: ['ai.ask'] },
 ];
 
 export function Logo({ compact }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <img src="/logo-crest.webp" alt="" className="h-9 w-9 rounded-md bg-white object-contain p-0.5" />
-      {!compact && <div className="leading-tight"><div className="font-serif text-lg font-bold tracking-wide text-gold-400">A.I. Nonprofits</div><div className="text-[10px] uppercase tracking-[0.18em] text-slate-400">by Thought Authorities</div></div>}
+      {!compact && <div className="leading-tight"><div className="font-serif text-lg font-bold tracking-wide text-gold-400">A.I. Fundraising</div><div className="text-[10px] uppercase tracking-[0.18em] text-slate-400">by Thought Authorities</div></div>}
     </div>
   );
 }
@@ -69,7 +69,7 @@ export function Layout() {
             <Search className="h-4 w-4" /><span className="flex-1 truncate">Quick Find — donors, gifts, grants, funds, tasks…</span><kbd className="hidden rounded border border-slate-200 bg-white px-1.5 text-[10px] text-slate-500 sm:inline">⌘K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-1">
-            {can('ai.ask') && <Link to="/ask" className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50 sm:inline-flex"><Sparkles className="h-4 w-4" />Ask A.I. Nonprofits</Link>}
+            {can('ai.ask') && <Link to="/ask" className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50 sm:inline-flex"><Sparkles className="h-4 w-4" />Ask A.I. Fundraising</Link>}
             <Notifications />
           </div>
         </header>

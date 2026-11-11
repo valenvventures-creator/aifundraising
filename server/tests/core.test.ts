@@ -84,7 +84,7 @@ test('row-level security isolates tenants even when a query omits the tenant fil
   await assert.rejects(withTenant(t2, (db) => db.query(`INSERT INTO donors(tenant_id, first_name) VALUES ($1,'Sneaky')`, [t1])), /row-level security/);
 });
 
-test('Ask A.I. Nonprofits exposes only read tools, filtered by permission', () => {
+test('Ask A.I. Fundraising exposes only read tools, filtered by permission', () => {
   const ctx = (perms: string[]) => ({ permissions: new Set(perms) } as any);
   const all = toolsFor(ctx(SYSTEM_ROLES[0].permissions));
   assert.ok(all.length >= 10);

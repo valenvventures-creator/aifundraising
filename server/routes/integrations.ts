@@ -211,7 +211,7 @@ integrationsRouter.post('/google/calendar', h(async (req, res) => {
 // ── Plaid bank feed ──
 integrationsRouter.post('/plaid/link-token', h(async (req, res) => {
   requirePerm(req.auth, 'integrations.manage');
-  const j = await plaidCall('/link/token/create', { user: { client_user_id: req.auth!.userId }, client_name: 'A.I. Nonprofits', products: ['transactions'], country_codes: ['US', 'CA'], language: 'en' });
+  const j = await plaidCall('/link/token/create', { user: { client_user_id: req.auth!.userId }, client_name: 'A.I. Fundraising', products: ['transactions'], country_codes: ['US', 'CA'], language: 'en' });
   res.json({ link_token: j.link_token });
 }));
 integrationsRouter.post('/plaid/exchange', h(async (req, res) => {

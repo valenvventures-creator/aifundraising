@@ -4,7 +4,7 @@
  * budgets, impact metrics and messages. Every gift is posted to the ledger
  * through the same services the app uses.
  *
- *   npm run seed            (login: demo@ainonprofits.org / demo-password-123)
+ *   npm run seed            (login: demo@aifundraising.org / demo-password-123)
  */
 import bcrypt from 'bcryptjs';
 import { migrate } from './migrate.js';
@@ -28,16 +28,16 @@ const CITIES: [string, string][] = [['Nashville', 'TN'], ['Nashville', 'TN'], ['
 
 async function main() {
   await migrate();
-  const exists = await withSystem((db) => one(db, `SELECT id FROM users WHERE email='demo@ainonprofits.org'`));
+  const exists = await withSystem((db) => one(db, `SELECT id FROM users WHERE email='demo@aifundraising.org'`));
   if (exists) { console.log('Demo data already present.'); return; }
 
   const { userId, tenantId } = await withSystem(async (db) => {
-    const u = await one(db, `INSERT INTO users(email,name,password_hash) VALUES ('demo@ainonprofits.org','Valerie Demo',$1) RETURNING id`, [await bcrypt.hash('demo-password-123', 12)]);
+    const u = await one(db, `INSERT INTO users(email,name,password_hash) VALUES ('demo@aifundraising.org','Valerie Demo',$1) RETURNING id`, [await bcrypt.hash('demo-password-123', 12)]);
     const t = await bootstrapTenant(db, { name: 'Thought Authorities Ministries', ownerUserId: u.id, firstWorkspace: 'Hope Community Church' });
     await db.query(`UPDATE tenants SET legal_name='Thought Authorities Ministries, Inc.', email='office@example.org', phone='(615) 555-0100', address1='100 Main St', city='Nashville', region='TN', postal_code='37201', tax_id='12-3456789',
       receipt_settings='{"signatory":"Valerie Demo, Executive Director"}' WHERE id=$1`, [t.id]);
     // Teammates
-    const staff = [['Marcus Finance', 'marcus@ainonprofits.org', 'Finance/Accounting'], ['Dana Development', 'dana@ainonprofits.org', 'Development/Fundraising'], ['Gina Grants', 'gina@ainonprofits.org', 'Grant Manager']];
+    const staff = [['Marcus Finance', 'marcus@aifundraising.org', 'Finance/Accounting'], ['Dana Development', 'dana@aifundraising.org', 'Development/Fundraising'], ['Gina Grants', 'gina@aifundraising.org', 'Grant Manager']];
     for (const [name, email, role] of staff) {
       const su = await one(db, `INSERT INTO users(email,name,password_hash) VALUES ($1,$2,$3) RETURNING id`, [email, name, await bcrypt.hash('demo-password-123', 12)]);
       const r = await one(db, `SELECT id FROM roles WHERE tenant_id=$1 AND name=$2`, [t.id, role]);
@@ -181,10 +181,10 @@ async function main() {
     await db.query(`INSERT INTO growth_goals(tenant_id, name, metric, target, period_start, period_end) VALUES ($1,'Raise $450K this year','giving_total',450000,$2,$3),($1,'Add 60 new donors','new_donors',60,$2,$3),($1,'Retention above 55%','retention_rate',55,$2,$3)`, [tenantId, `${yr}-01-01`, `${yr}-12-31`]);
     // Messages
     const conv = await one(db, `SELECT id FROM conversations WHERE name='general'`);
-    await db.query(`INSERT INTO messages(tenant_id, conversation_id, user_id, body) VALUES ($1,$2,$3,'Welcome to A.I. Nonprofits! Year-end campaign kickoff is Monday.')`, [tenantId, conv.id, userId]);
+    await db.query(`INSERT INTO messages(tenant_id, conversation_id, user_id, body) VALUES ($1,$2,$3,'Welcome to A.I. Fundraising! Year-end campaign kickoff is Monday.')`, [tenantId, conv.id, userId]);
     await recalcDonors(db);
   });
-  console.log('Seeded demo organization. Login: demo@ainonprofits.org / demo-password-123');
+  console.log('Seeded demo organization. Login: demo@aifundraising.org / demo-password-123');
 }
 
 main().then(() => pool.end()).catch((e) => { console.error(e); process.exit(1); });

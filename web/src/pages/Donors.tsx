@@ -244,7 +244,7 @@ export function TextModal({ open, onClose, donor, onSent }: { open: boolean; onC
       <a href={`sms:${donor.phone}?&body=${encodeURIComponent(body)}`} onClick={async () => { await run(() => api.post(`/donors/${donor.id}/contact`, { type: 'text', subject: 'Text message', body }), 'Text logged to donor history'); onSent?.(); onClose(); }}
         className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"><MessageSquareText className="h-4 w-4" />Open in Messages & log</a></>}>
       <Field label={`To ${donor.phone ?? '(no phone on file)'}`}><Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
-      <p className="mt-2 text-xs text-slate-500">Opens your phone's messaging app with this text pre-filled. A.I. Nonprofits logs the text on the donor's record; it never sends texts on its own.</p>
+      <p className="mt-2 text-xs text-slate-500">Opens your phone's messaging app with this text pre-filled. A.I. Fundraising logs the text on the donor's record; it never sends texts on its own.</p>
     </Modal>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * Netlify Function (modern format, same as the other Thought Authorities sites) that
- * runs the A.I. Nonprofits API for every /api/*, /webhooks/* and /t/* request.
+ * runs the A.I. Fundraising API for every /api/*, /webhooks/* and /t/* request.
  * Netlify Database (NETLIFY_DB_URL) and Netlify Blobs are available automatically.
  * The server itself is compiled into ../server-dist/app.mjs during the build.
  */
@@ -61,7 +61,7 @@ export default async (request: Request, context: any) => {
     return toResponse(await handler(await toEvent(request, context), { callbackWaitsForEmptyEventLoop: false }));
   } catch (e: any) {
     ready = null; // retry setup on the next request
-    console.error('A.I. Nonprofits failed to start', e);
+    console.error('A.I. Fundraising failed to start', e);
     const msg = String(e?.message ?? 'unknown error').replace(/\.\s*$/, '');
     return Response.json({ error: `Server setup problem: ${msg}. If this keeps happening, see README › Deploying on Netlify.` }, { status: 500 });
   }

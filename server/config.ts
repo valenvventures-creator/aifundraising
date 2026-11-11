@@ -46,7 +46,7 @@ export const config = {
   smtp: process.env.SMTP_HOST ? {
     host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT ?? 587),
     user: process.env.SMTP_USER, pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM ?? 'A.I. Nonprofits <no-reply@example.org>',
+    from: process.env.SMTP_FROM ?? 'A.I. Fundraising <no-reply@example.org>',
   } : null,
   quickbooks: {
     clientId: process.env.QBO_CLIENT_ID, clientSecret: process.env.QBO_CLIENT_SECRET,
