@@ -12,7 +12,8 @@
     "migrate": "tsx server/db/migrate.ts",
     "seed": "tsx server/db/seed.ts",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit",
-    "test": "NODE_ENV=test tsx --test server/tests/*.test.ts"
+    "test": "NODE_ENV=test tsx --test server/tests/*.test.ts",
+    "build:netlify": "esbuild server/netlify-entry.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=netlify/server-dist/app.mjs --log-level=warning"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
@@ -51,6 +52,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "autoprefixer": "^10.6.2",
     "concurrently": "^10.0.7",
+    "esbuild": "^0.28.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.70.0",
     "postcss": "^8.5.32",

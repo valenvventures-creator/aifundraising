@@ -5,7 +5,7 @@
 
 [build]
   # Every deploy runs the test suite first; a failing test stops the deploy.
-  command = "npm test && npm run build"
+  command = "npm test && npm run build && npm run build:netlify"
   publish = "dist"
 
 [build.environment]
@@ -13,33 +13,12 @@
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
-  included_files = ["server/db/migrations/**"]
-  external_node_modules = ["pdfkit", "exceljs", "pg", "nodemailer", "@anthropic-ai/sdk"]
+  # Modern-format functions (routes and schedule are set in each function's `config`).
+  # The server is precompiled into netlify/server-dist/app.mjs by `npm run build:netlify`.
+  included_files = ["server/db/migrations/**", "netlify/server-dist/**", "node_modules/pdfkit/js/data/**"]
 
-[functions.jobs]
-  schedule = "* * * * *"
-
-# Send API, webhook and email-tracking traffic to the function (original path preserved).
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/webhooks/*"
-  to = "/.netlify/functions/api/webhooks/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/t/*"
-  to = "/.netlify/functions/api/t/:splat"
-  status = 200
-  force = true
-
-# Single-page app: every other path loads the web app.
+# Single-page app: every other path loads the web app. (/api, /webhooks and /t are
+# matched by the `api` function first, so they never reach this rule.)
 [[redirects]]
   from = "/*"
   to = "/index.html"

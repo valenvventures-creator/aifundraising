@@ -1,51 +1,70 @@
 /**
- * Netlify Function that runs the whole A.I. Nonprofits API (Express) — every
- * /api/*, /webhooks/* and /t/* request is routed here by netlify.toml.
- * Same hosting model as the other Thought Authorities sites: Netlify Functions,
- * Netlify Database (NETLIFY_DB_URL) and Netlify Blobs (files and keys).
+ * Netlify Function (modern format, same as the other Thought Authorities sites) that
+ * runs the A.I. Nonprofits API for every /api/*, /webhooks/* and /t/* request.
+ * Netlify Database (NETLIFY_DB_URL) and Netlify Blobs are available automatically.
+ * The server itself is compiled into ../server-dist/app.mjs during the build.
  */
-import express from 'express';
 import serverless from 'serverless-http';
-import { connectLambda } from '@netlify/blobs';
 
-// Must be set before the server modules load (they read config at import time).
 process.env.AINP_SERVERLESS = '1';
 process.env.AINP_STORAGE ??= 'netlify-blobs';
-process.env.NODE_ENV ??= 'production';
+if (!process.env.NETLIFY_DEV) process.env.NODE_ENV ??= 'production';
 
-type Handler = (event: any, context: any) => Promise<any>;
-let ready: Promise<Handler> | null = null;
+type LambdaHandler = (event: any, context: any) => Promise<any>;
+let ready: Promise<LambdaHandler> | null = null;
 
-async function init(): Promise<Handler> {
-  const { ensureNetlifySecrets } = await import('../../server/lib/secrets.js');
-  await ensureNetlifySecrets(); // generates JWT_SECRET / ENCRYPTION_KEY once if you haven't set them
-  const { createApp, assertRlsSafe } = await import('../../server/index.js');
-  const { migrate } = await import('../../server/db/migrate.js');
-  await migrate();          // idempotent; serialized with an advisory lock
-  await assertRlsSafe();
-  const outer = express();
-  // Requests arrive as /.netlify/functions/api/<original path>; restore the original path.
-  outer.use((req, _res, next) => { req.url = req.url.replace(/^\/\.netlify\/functions\/api/, '') || '/'; next(); });
-  outer.use(createApp());
-  return serverless(outer, {
-    binary: ['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream', 'image/*', 'application/zip'],
-  }) as unknown as Handler;
+const BINARY = ['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream', 'image/*', 'application/zip'];
+
+async function init(): Promise<LambdaHandler> {
+  const { createNetlifyApp } = await import('../server-dist/app.mjs');
+  const app = await createNetlifyApp();
+  return serverless(app, { binary: BINARY }) as unknown as LambdaHandler;
 }
 
-export const handler = async (event: any, context: any) => {
-  if (event?.blobs) connectLambda(event); // enables Netlify Blobs (attachment storage) in this function
-  context.callbackWaitsForEmptyEventLoop = false;
+/** Translate a web Request into the event shape the Express adapter expects, and back. */
+async function toEvent(request: Request, context: any) {
+  const url = new URL(request.url);
+  const headers: Record<string, string> = {};
+  const multiValueHeaders: Record<string, string[]> = {};
+  request.headers.forEach((v, k) => { headers[k] = v; (multiValueHeaders[k] ??= []).push(v); });
+  const query: Record<string, string> = {};
+  const multiQuery: Record<string, string[]> = {};
+  url.searchParams.forEach((v, k) => { query[k] = v; (multiQuery[k] ??= []).push(v); });
+  const hasBody = !['GET', 'HEAD'].includes(request.method);
+  const body = hasBody ? Buffer.from(await request.arrayBuffer()) : null;
+  if (context?.ip && !headers['x-nf-client-connection-ip']) headers['x-nf-client-connection-ip'] = context.ip;
+  headers.host ??= url.host; // used by the same-site check on form submissions
+  return {
+    httpMethod: request.method, path: url.pathname, headers, multiValueHeaders,
+    queryStringParameters: query, multiValueQueryStringParameters: multiQuery,
+    body: body && body.length ? body.toString('base64') : null, isBase64Encoded: Boolean(body && body.length),
+    requestContext: { identity: { sourceIp: context?.ip } },
+  };
+}
+
+function toResponse(r: any) {
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers.set(k, String(v));
+  for (const [k, vs] of Object.entries(r.multiValueHeaders ?? {})) {
+    headers.delete(k);
+    for (const v of vs as unknown[]) headers.append(k, String(v));
+  }
+  const noBody = r.statusCode === 204 || r.statusCode === 304 || !r.body;
+  const body = noBody ? null : r.isBase64Encoded ? Buffer.from(r.body, 'base64') : r.body;
+  return new Response(body, { status: r.statusCode ?? 200, headers });
+}
+
+export default async (request: Request, context: any) => {
   try {
     ready ??= init();
-    const h = await ready;
-    return await h(event, context);
+    const handler = await ready;
+    return toResponse(await handler(await toEvent(request, context), { callbackWaitsForEmptyEventLoop: false }));
   } catch (e: any) {
     ready = null; // retry setup on the next request
     console.error('A.I. Nonprofits failed to start', e);
-    return {
-      statusCode: 500,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ error: `Server setup problem: ${String(e?.message ?? 'unknown error').replace(/\.\s*$/, '')}. If this keeps happening, see README › Deploying on Netlify.` }),
-    };
+    const msg = String(e?.message ?? 'unknown error').replace(/\.\s*$/, '');
+    return Response.json({ error: `Server setup problem: ${msg}. If this keeps happening, see README › Deploying on Netlify.` }, { status: 500 });
   }
 };
+
+export const config = { path: ['/api/*', '/webhooks/*', '/t/*'] };

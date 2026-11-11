@@ -3,3 +3,5 @@ dist/
 storage/
 .env
 *.log
+netlify/server-dist/
+.netlify/

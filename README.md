@@ -28,6 +28,8 @@ npm test
 
 A.I. Nonprofits uses the same model as the other Thought Authorities sites (A.I. C-Suite and A.I. IPO): **Netlify Functions** for the app, **Netlify Database** for accounts and data, and **Netlify Blobs** for uploaded files and keys.
 
+The functions use Netlify's modern format (`export default` with a `config` route), like A.I. IPO. The build compiles the server into `netlify/server-dist/app.mjs` (`npm run build:netlify`). `netlify/functions/api.mts` serves `/api/*`, `/webhooks/*` and `/t/*`, and `netlify/functions/jobs.mts` runs the automations every minute.
+
 1. In Netlify, choose **Add new project → Import an existing project → GitHub → `ainonprofits`**, or link the repository to an existing project. `netlify.toml` sets up the build, so leave the build command and publish directory empty in the Netlify UI.
 2. **Netlify Database is set up automatically on deploy**, because the project depends on `@netlify/database` and has a migration in `netlify/database/migrations/` (the same convention as the other sites). If no database appears, create one in Netlify under **Data & Storage → Database** and redeploy. Netlify then provides `NETLIFY_DB_URL`, and the app creates the rest of its tables on first use. Netlify Database requires a credit-based Netlify plan.
 3. **Deploy.** Every build runs the test suite first, and a failing test stops the deploy.
