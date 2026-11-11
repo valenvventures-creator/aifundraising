@@ -466,7 +466,8 @@ async function validateImport(db: Db, s: any) {
   for (const [i, raw] of (s.rows as any[]).entries()) {
     const r = mapRow(raw, s.mapping); const n = i + 2;
     if (s.entity === 'donors') {
-      const type = (r.donor_type ?? (r.org_name && !r.first_name && !r.last_name ? 'organization' : 'individual')).toLowerCase();
+      let type = (r.donor_type ?? (r.org_name && !r.first_name && !r.last_name ? 'organization' : 'individual')).toLowerCase();
+      if (type === 'grantmaker') type = 'foundation'; // shown as “Grantmaker” in the app
       if (!['individual', 'household', 'foundation', 'business', 'church', 'organization'].includes(type)) { errors.push({ row: n, message: `Unknown donor type “${r.donor_type}”` }); continue; }
       if (!(r.first_name || r.last_name || r.org_name || r.household_name)) { errors.push({ row: n, message: 'Missing name' }); continue; }
       if (r.email && !/^\S+@\S+\.\S+$/.test(r.email)) { errors.push({ row: n, message: `Invalid email “${r.email}”` }); continue; }

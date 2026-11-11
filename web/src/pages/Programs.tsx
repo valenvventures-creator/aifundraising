@@ -1,4 +1,4 @@
-/** Foundations & Grants, Projects, Events & Registration. */
+/** Grants, Projects, Events & Registration. */
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Sparkles, ExternalLink, Download, Copy } from 'lucide-react';
@@ -24,16 +24,16 @@ export function Grants() {
   const nav = useNavigate();
   return (
     <div className="space-y-4">
-      <StateTabs value={tab} onChange={(v) => setSp({ tab: v })} tabs={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'list', label: 'All grants' }, { value: 'funders', label: 'Foundations & funders' }]} />
+      <StateTabs value={tab} onChange={(v) => setSp({ tab: v })} tabs={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'list', label: 'All grants' }, { value: 'funders', label: 'Funders' }]} />
       {tab === 'pipeline' && <GrantPipeline />}
       {tab === 'list' && <ResourcePage resource="grants" title="Grant opportunity" emptyAction="Add Grant Opportunity" writePerm="grants.write" fields={GRANT_FIELDS} onRowClick={(r: any) => nav(`/donors/grants/${r.id}`)}
-        emptyText="Track foundation and government grants from research through reporting. Deadlines feed your calendar, dashboard and reminders."
+        emptyText="Track private and government grants from research through reporting. Deadlines feed your calendar, dashboard and reminders."
         filters={(q, set) => <Select className="w-40" value={q.status ?? ''} onChange={(e) => set('status', e.target.value)} placeholder="All statuses" options={GRANT_STATUSES} />}
         cols={[{ key: 'title', label: 'Grant', sortable: true, render: (r: any) => <span className="font-medium">{r.title}</span> }, { key: 'funder_name', label: 'Funder' }, { key: 'status', label: 'Status', render: (r: any) => <Chip value={r.status} /> },
           { key: 'request_amount', label: 'Requested', align: 'right', sortable: true, render: (r: any) => (r.request_amount ? money(r.request_amount) : '—') }, { key: 'awarded_amount', label: 'Awarded', align: 'right', render: (r: any) => (r.awarded_amount ? money(r.awarded_amount) : '—') },
           { key: 'deadline', label: 'Deadline', sortable: true, render: (r: any) => date(r.deadline) }, { key: 'assignee_name', label: 'Assigned' }]} />}
       {tab === 'funders' && <ResourcePage resource="funders" title="Funder" writePerm="grants.write"
-        fields={[{ key: 'name', label: 'Foundation / funder', required: true, span: 2 }, { key: 'contact_name', label: 'Contact' }, { key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }, { key: 'website', label: 'Website' }, { key: 'focus_areas', label: 'Focus areas', span: 2 }, { key: 'notes', label: 'Notes', type: 'textarea' }]}
+        fields={[{ key: 'name', label: 'Funder', required: true, span: 2 }, { key: 'contact_name', label: 'Contact' }, { key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }, { key: 'website', label: 'Website' }, { key: 'focus_areas', label: 'Focus areas', span: 2 }, { key: 'notes', label: 'Notes', type: 'textarea' }]}
         cols={[{ key: 'name', label: 'Funder', sortable: true, render: (r: any) => <span className="font-medium">{r.name}</span> }, { key: 'contact_name', label: 'Contact' }, { key: 'email', label: 'Email' }, { key: 'focus_areas', label: 'Focus' }, { key: 'grant_count', label: 'Grants', align: 'right' }, { key: 'awarded_total', label: 'Awarded', align: 'right', render: (r: any) => money(r.awarded_total) }]} />}
     </div>
   );

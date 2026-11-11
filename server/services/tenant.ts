@@ -16,7 +16,7 @@ export const DEFAULT_ACCOUNTS: [string, string, string, string?, boolean?][] = [
   ['3100', 'Net Assets With Donor Restrictions', 'net_assets', 'restricted'],
   ['3900', 'Interfund Transfers', 'net_assets', 'transfer'],
   ['4000', 'Contributions — Individuals', 'revenue', 'contributions'],
-  ['4010', 'Contributions — Organizations & Foundations', 'revenue', 'contributions'],
+  ['4010', 'Contributions — Organizations & Grantmakers', 'revenue', 'contributions'],
   ['4100', 'Grant Revenue', 'revenue', 'grants'],
   ['4200', 'Event Revenue', 'revenue', 'events'],
   ['4300', 'Program Service Fees', 'revenue', 'program'],

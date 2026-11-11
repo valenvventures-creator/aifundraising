@@ -121,7 +121,7 @@ donorsRouter.get('/export', h(async (req, res) => {
   const rows = await tx(req, async (db) => {
     const r = await many(db, `SELECT ${LIST_COLS}, d.address1, d.address2, d.country, d.spouse_name, d.household_name, d.source, d.notes FROM donors d LEFT JOIN ministries m ON m.id=d.ministry_id LEFT JOIN users u ON u.id=d.owner_user_id WHERE ${where} ORDER BY ${order} LIMIT 100000`, params);
     await audit(db, actor(req), 'export', 'export', `Exported ${r.length} donors`, { type: 'donor' }, { filters: req.query });
-    return r;
+    return r.map((x: any) => (x.donor_type === 'foundation' ? { ...x, donor_type: 'grantmaker' } : x)); // re-importable: imports accept “grantmaker”
   });
   const cols = ['name', 'donor_type', 'first_name', 'last_name', 'org_name', 'spouse_name', 'household_name', 'email', 'phone', 'address1', 'address2', 'city', 'region', 'postal_code', 'country',
     'health_status', 'score', 'lifetime', 'last_gift', 'last_amount', 'gift_count', 'opportunity', 'suggested_ask', 'next_step', 'tags', 'ministry_name', 'owner_name', 'source', 'notes'];

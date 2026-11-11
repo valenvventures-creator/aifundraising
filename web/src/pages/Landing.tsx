@@ -186,7 +186,7 @@ const STAGES: Stage[] = [
     mock: () => (
       <div className="lp-mock">
         <div className="lp-tag good">This week</div>
-        {[['Spring Gala', 'Registrations open · 186 guests', 'g', 'Event'], ['Hope Foundation report', 'Due Friday', 'r', 'Grant'], ['Volunteer onboarding', '6 of 9 tasks done', 'y', 'Project'], ['Board packet', 'Assigned to Finance', 'i', 'Task']].map(([a, b, p, c], i) => (
+        {[['Spring Gala', 'Registrations open · 186 guests', 'g', 'Event'], ['Community grant report', 'Due Friday', 'r', 'Grant'], ['Volunteer onboarding', '6 of 9 tasks done', 'y', 'Project'], ['Board packet', 'Assigned to Finance', 'i', 'Task']].map(([a, b, p, c], i) => (
           <div key={a} className="lp-mock-row" style={{ animationDelay: `${i * 120}ms` }}><span className="lp-ic lp-ic-indigo"><CalendarDays size={16} /></span><span className="nm">{a}<small>{b}</small></span><span className={`lp-pill ${p}`}>{c}</span></div>
         ))}
       </div>

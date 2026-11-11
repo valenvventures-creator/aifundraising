@@ -5,7 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { api, useApi, qs, download, downloadPost } from '../lib/api';
 import { useSession } from '../lib/session';
 import { Button, Card, Metric, PageHeader, PillTabs, Spinner, ErrorBox, Modal, Field, Input, Select, Textarea, Table, Pager, SearchInput, Chip, Empty, Notice, useAction, useToast, cx, Checkbox } from '../components/ui';
-import { DonorModal, GiftModal, TaskModal, DraftModal, ContactModal, HealthChip, ScoreBadge, FundSelect, DonorPicker, WorkspaceSelect, TeamSelect, useCampaigns, GIFT_TYPES, PAYMENT_METHODS } from '../components/domain';
+import { DonorModal, GiftModal, TaskModal, DraftModal, ContactModal, HealthChip, ScoreBadge, FundSelect, DonorPicker, WorkspaceSelect, TeamSelect, useCampaigns, GIFT_TYPES, PAYMENT_METHODS, DONOR_TYPES, donorTypeLabel } from '../components/domain';
 import { money, num, date, label, today } from '../lib/format';
 
 const HEALTH_COLORS: Record<string, string> = { active: '#10b981', engaged: '#0ea5e9', cooling: '#f59e0b', lapsing: '#f97316', lapsed: '#ef4444' };
@@ -29,7 +29,7 @@ export function DonorsShell() {
           {can('gifts.write') && <Button size="sm" variant="primary" icon={<HandCoins className="h-4 w-4" />} onClick={() => setModal('gift')}>Add Donation</Button>}
         </>}>
         <PillTabs className="mt-4" tabs={[
-          { to: '/donors/giving', label: 'Donors & Giving', hidden: !can('donors.read') }, { to: '/donors/grants', label: 'Foundations & Grants', hidden: !can('grants.read') },
+          { to: '/donors/giving', label: 'Donors & Giving', hidden: !can('donors.read') }, { to: '/donors/grants', label: 'Grants', hidden: !can('grants.read') },
           { to: '/donors/projects', label: 'Projects', hidden: !can('projects.read') }, { to: '/donors/email', label: 'Email', hidden: !can('email.read') }, { to: '/donors/events', label: 'Events', hidden: !can('events.read') }]} />
       </PageHeader>
       <Outlet />
@@ -161,7 +161,7 @@ export function DonorList() {
         <SearchInput value={q.q ?? ''} onChange={(v) => set('q', v)} placeholder="Name, email, phone, city…" />
         <Select className="w-36" value={q.health ?? ''} onChange={(e) => set('health', e.target.value)} placeholder="All health" options={['active', 'engaged', 'cooling', 'lapsing', 'lapsed'].map((h) => ({ value: h, label: label(h) }))} />
         <Select className="w-48" value={q.category ?? ''} onChange={(e) => set('category', e.target.value)} placeholder="All opportunities" options={['lapsed_major', 'major_donor_call', 'campaign_follow_up', 'year_end', 'recurring_upgrade', 'first_time_follow_up', 'event_invitation', 'reactivate_lapsed', 'thank_you', 'cultivate'].map((c) => ({ value: c, label: label(c) }))} />
-        <Select className="w-36" value={q.donor_type ?? ''} onChange={(e) => set('donor_type', e.target.value)} placeholder="All types" options={['individual', 'household', 'foundation', 'business', 'church', 'organization']} />
+        <Select className="w-36" value={q.donor_type ?? ''} onChange={(e) => set('donor_type', e.target.value)} placeholder="All types" options={DONOR_TYPES.map((t) => ({ value: t, label: donorTypeLabel(t) }))} />
         <Input className="w-28" placeholder="Tag" value={q.tag ?? ''} onChange={(e) => set('tag', e.target.value)} />
         <Input className="w-28" placeholder="State/Prov." value={q.region ?? ''} onChange={(e) => set('region', e.target.value)} />
         <Input className="w-32" type="number" placeholder="Min lifetime" value={q.min_lifetime ?? ''} onChange={(e) => set('min_lifetime', e.target.value)} />

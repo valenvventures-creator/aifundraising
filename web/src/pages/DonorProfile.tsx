@@ -4,7 +4,7 @@ import { HandCoins, PhoneCall, Mail, Phone, MessageSquareText, Target, ListPlus,
 import { api, useApi, download } from '../lib/api';
 import { useSession } from '../lib/session';
 import { Button, Card, Chip, Spinner, ErrorBox, Modal, Field, Input, Select, Textarea, Table, StateTabs, Progress, Notice, AiBadge, useAction, useToast, Dropdown } from '../components/ui';
-import { DonorModal, GiftModal, ContactModal, TaskModal, DraftModal, HealthChip, ScoreBadge, DonorPicker } from '../components/domain';
+import { DonorModal, GiftModal, ContactModal, TaskModal, DraftModal, HealthChip, ScoreBadge, DonorPicker, donorTypeLabel } from '../components/domain';
 import { TextModal } from './Donors';
 import { money, money2, date, dateTime, label, today } from '../lib/format';
 
@@ -36,7 +36,7 @@ export function DonorProfile() {
         <div>
           <Link to="/donors/giving/donors" className="text-xs text-brand-600 hover:underline">← Donors</Link>
           <h1 className="mt-1 flex flex-wrap items-center gap-3 text-2xl font-bold">{d.name}<HealthChip status={d.health_status} override={d.health_override} />{d.archived && <Chip value="archived" />}</h1>
-          <p className="mt-1 text-sm text-slate-500">{label(d.donor_type)}{d.spouse_name ? ` · Spouse: ${d.spouse_name}` : ''}{d.household_name ? ` · ${d.household_name}` : ''}{d.ministry_name ? ` · ${d.ministry_name}` : ''}{d.owner_name ? ` · Owner: ${d.owner_name}` : ''}</p>
+          <p className="mt-1 text-sm text-slate-500">{donorTypeLabel(d.donor_type)}{d.spouse_name ? ` · Spouse: ${d.spouse_name}` : ''}{d.household_name ? ` · ${d.household_name}` : ''}{d.ministry_name ? ` · ${d.ministry_name}` : ''}{d.owner_name ? ` · Owner: ${d.owner_name}` : ''}</p>
           <p className="mt-1 text-sm text-slate-600">{[d.email, d.phone, [d.address1, d.city, d.region, d.postal_code].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</p>
           {d.tags?.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{d.tags.map((t: string) => <Chip key={t}>{t}</Chip>)}</div>}
         </div>

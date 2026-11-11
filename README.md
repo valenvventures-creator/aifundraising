@@ -82,7 +82,7 @@ Key folders:
 
 ## Modules (navigation)
 
-**Home** (workspace cards plus an aggregate dashboard and onboarding checklist) · **Donors** (Donors & Giving: Overview / Donors / Priorities / Trips / Outreach / Campaigns / Growth Audit / Reports / Receipts; Foundations & Grants; Projects; Email; Events) · **Money** (Accounting: Overview, Transactions, Post Giving, Snap & Receipt, Spend, Funds, Chart of Accounts, Budgets, Bank Feed, Journals, Giving & Receipts, Integrations, Import/Sync, Settings; Payroll; Invoices; Reports; Updates) · **Work** (Tasks, Client Work, Calendar, Communications, Time Log) · **Growth** · **Impact** · **Messages** · **Admin & Access** · **Settings** · **Ask A.I. Nonprofits**. Quick Find opens with ⌘K, Ctrl-K or `/`.
+**Home** (workspace cards plus an aggregate dashboard and onboarding checklist) · **Donors** (Donors & Giving: Overview / Donors / Priorities / Trips / Outreach / Campaigns / Growth Audit / Reports / Receipts; Grants; Projects; Email; Events) · **Money** (Accounting: Overview, Transactions, Post Giving, Snap & Receipt, Spend, Funds, Chart of Accounts, Budgets, Bank Feed, Journals, Giving & Receipts, Integrations, Import/Sync, Settings; Payroll; Invoices; Reports; Updates) · **Work** (Tasks, Client Work, Calendar, Communications, Time Log) · **Growth** · **Impact** · **Messages** · **Admin & Access** · **Settings** · **Ask A.I. Nonprofits**. Quick Find opens with ⌘K, Ctrl-K or `/`.
 
 The workspace label (Ministry, Organization, Program, Chapter, Campus, and so on) is configurable per organization.
 

@@ -66,13 +66,15 @@ export function DonorPicker({ value, onChange, onCreateNew, allowNew }: { value:
 
 // ───────── Add / Edit Donor ─────────
 export const DONOR_TYPES = ['individual', 'household', 'foundation', 'business', 'church', 'organization'];
+/** Display names for donor types. The stored value 'foundation' is shown as “Grantmaker”. */
+export const donorTypeLabel = (t?: string | null) => (t === 'foundation' ? 'Grantmaker' : label(t ?? 'individual'));
 export function DonorFields({ d, set }: { d: any; set: (k: string, v: any) => void }) {
   const { can } = useSession();
   const isPerson = ['individual', 'household'].includes(d.donor_type ?? 'individual');
   const team = useTeam() ?? [];
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <Field label="Donor type"><Select value={d.donor_type ?? 'individual'} onChange={(e) => set('donor_type', e.target.value)} options={DONOR_TYPES.map((t) => ({ value: t, label: label(t) }))} /></Field>
+      <Field label="Donor type"><Select value={d.donor_type ?? 'individual'} onChange={(e) => set('donor_type', e.target.value)} options={DONOR_TYPES.map((t) => ({ value: t, label: donorTypeLabel(t) }))} /></Field>
       <Field label="Workspace"><WorkspaceSelect value={d.ministry_id ?? ''} onChange={(v) => set('ministry_id', v || null)} placeholder="Organization-wide" /></Field>
       {isPerson ? <>
         <Field label="First name"><Input value={d.first_name ?? ''} onChange={(e) => set('first_name', e.target.value)} /></Field>

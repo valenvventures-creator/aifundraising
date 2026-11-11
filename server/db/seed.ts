@@ -71,7 +71,7 @@ async function main() {
       const ministry = rnd() < 0.7 ? m1 : m2;
       const d = await one(db, `INSERT INTO donors(tenant_id, ministry_id, donor_type, first_name, last_name, org_name, spouse_name, email, phone, address1, city, region, postal_code, country, lat, lng, tags, source, owner_user_id, capacity_estimate, notes)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'US',$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
-        [tenantId, ministry, isOrg ? pick(['foundation', 'business', 'church']) : 'individual', isOrg ? null : first, isOrg ? null : last, isOrg ? `${last} ${pick(['Family Foundation', 'Group', 'Community Church'])}` : null,
+        [tenantId, ministry, isOrg ? pick(['foundation', 'business', 'church']) : 'individual', isOrg ? null : first, isOrg ? null : last, isOrg ? `${last} ${pick(['Family Trust', 'Group', 'Community Church'])}` : null,
          !isOrg && rnd() < 0.4 ? pick(FIRST) : null, `${first.toLowerCase()}.${last.toLowerCase()}${i}@example.com`, `(615) 555-${String(1000 + i).slice(-4)}`, `${100 + i} ${pick(['Oak', 'Maple', 'Cedar', 'Elm'])} St`,
          city, region, String(37000 + Math.floor(rnd() * 999)), g.lat + (rnd() - 0.5) * 0.15, g.lng + (rnd() - 0.5) * 0.15, rnd() < 0.2 ? ['board'] : rnd() < 0.3 ? ['volunteer'] : [],
          pick(['Event', 'Website', 'Referral', 'Church service', 'Mailing']), pick(team).id, rnd() < 0.15 ? Math.round(50000 + rnd() * 500000) : null, rnd() < 0.2 ? 'Prefers phone calls in the afternoon.' : null]);
@@ -143,7 +143,7 @@ async function main() {
     for (const [desc, amt, ago] of [['ONLINE TRANSFER — STRIPE PAYOUT', 1240.5, 2], ['UTILITY CO AUTOPAY', -612.33, 4], ['OFFICE SUPPLY STORE', -148.2, 6], ['DEPOSIT', 3200, 1]] as [string, number, number][])
       await db.query(`INSERT INTO bank_transactions(tenant_id, bank_account_id, txn_date, description, amount, external_id) VALUES ($1,$2,$3,$4,$5,$6)`, [tenantId, ba.id, daysAgo(ago), desc, amt, `seed-${desc}-${ago}`]);
     // Grants
-    const f1 = (await one(db, `INSERT INTO funders(tenant_id,name,contact_name,email,focus_areas) VALUES ($1,'Lilly Community Foundation','Ann Program','ann@example.org','Youth, community development') RETURNING id`, [tenantId])).id;
+    const f1 = (await one(db, `INSERT INTO funders(tenant_id,name,contact_name,email,focus_areas) VALUES ($1,'Lilly Community Fund','Ann Program','ann@example.org','Youth, community development') RETURNING id`, [tenantId])).id;
     const f2 = (await one(db, `INSERT INTO funders(tenant_id,name,contact_name,email,focus_areas) VALUES ($1,'Clean Water Trust','Tom Officer','tom@example.org','Water, sanitation') RETURNING id`, [tenantId])).id;
     for (const [title, funder, req_, status, dl, ministry, project] of [
       ['Youth Mentoring Expansion', f1, 50000, 'preparing', addDays(daysAgo(0), 12), m1, proj2], ['Village Wells Phase 2', f2, 75000, 'submitted', daysAgo(20), m2, proj1],
