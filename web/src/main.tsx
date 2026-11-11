@@ -17,6 +17,7 @@ import { IntegrationsPage, SyncCenter } from './pages/Integrations';
 import { WorkShell, Tasks, ClientWork, CalendarPage, Communications, TimeLog } from './pages/Work';
 import { Growth, Impact, Messages, Admin, Ask } from './pages/Platform';
 import { Settings } from './pages/Settings';
+import { Landing } from './pages/Landing';
 
 function Guard({ perm, children }: { perm: string | string[]; children: React.ReactNode }) {
   const { can } = useSession();
@@ -37,7 +38,7 @@ function AuthedApp() {
   if (loc.pathname.startsWith('/reset-password/')) return <Routes><Route path="/reset-password/:token" element={<ResetPassword />} /></Routes>;
   if (loc.pathname === '/forgot-password') return <ForgotPassword />;
   if (loading) return <Spinner label="Loading A.I. Nonprofits…" />;
-  if (!me) return <Routes><Route path="/signup" element={<Signup />} /><Route path="*" element={<Login />} /></Routes>;
+  if (!me) return <Routes><Route path="/" element={<Landing />} /><Route path="/signup" element={<Signup />} /><Route path="*" element={<Login />} /></Routes>;
   if (!me.tenant) return <div className="mx-auto max-w-xl p-8"><NewOrganization /></div>;
   return (
     <Routes>
@@ -45,6 +46,8 @@ function AuthedApp() {
         <Route index element={<Home />} />
         <Route path="workspaces/:id" element={<WorkspaceHome />} />
         <Route path="new-organization" element={<NewOrganization />} />
+        <Route path="login" element={<Navigate to="/" replace />} />
+        <Route path="signup" element={<Navigate to="/" replace />} />
         <Route path="donors" element={<DonorsShell />}>
           <Route index element={<DonorsIndex />} />
           <Route path="giving" element={<Guard perm="donors.read"><GivingShell /></Guard>}>

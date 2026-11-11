@@ -9,11 +9,11 @@ function Shell({ children, title, subtitle }: { children: React.ReactNode; title
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-brand-800 px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex flex-col items-center text-center">
+        <Link to="/" className="mb-6 flex flex-col items-center text-center">
           <img src="/logo-crest.webp" alt="Thought Authorities" className="h-24 w-24 rounded-2xl bg-white object-contain p-1.5 shadow-lg" />
           <div className="mt-4 font-serif text-3xl font-bold tracking-wide text-gold-400">A.I. Nonprofits</div>
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">by Thought Authorities</div>
-        </div>
+        </Link>
         <div className="rounded-2xl bg-white p-6 shadow-2xl">
           <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
@@ -73,7 +73,7 @@ export function Signup() {
         <OrgFields v={v} set={set} />
         <Button variant="primary" className="w-full" loading={busy}>Create organization</Button>
       </form>
-      <p className="mt-4 text-center text-sm text-slate-500">Already have an account? <Link to="/" className="font-medium text-brand-600 hover:underline">Sign in</Link></p>
+      <p className="mt-4 text-center text-sm text-slate-500">Already have an account? <Link to="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link></p>
     </Shell>
   );
 }
@@ -107,7 +107,7 @@ export function ForgotPassword() {
         <Field label="Email"><Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
         <Button variant="primary" className="w-full" loading={busy}>Send reset link</Button>
       </form>}
-      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/" className="font-medium text-brand-600 hover:underline">Back to sign in</Link></p>
+      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/login" className="font-medium text-brand-600 hover:underline">Back to sign in</Link></p>
     </Shell>
   );
 }
@@ -118,7 +118,7 @@ export function ResetPassword() {
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false);
   return (
     <Shell title="Choose a new password" subtitle="After saving, sign in with your new password. Other signed-in sessions are signed out.">
-      {done ? <><Notice>Your password has been changed.</Notice><Button variant="primary" className="mt-4 w-full" onClick={() => nav('/')}>Sign in</Button></> :
+      {done ? <><Notice>Your password has been changed.</Notice><Button variant="primary" className="mt-4 w-full" onClick={() => nav('/login')}>Sign in</Button></> :
         <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); const bad = passwordProblem(password, confirm); if (bad) { setErr(bad); return; } setBusy(true); setErr(null); try { await api.post(`/auth/reset/${token}`, { password }); setDone(true); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
           {err && <ErrorBox error={err} />}
           <PasswordPair label="New password" password={password} confirm={confirm} onPassword={setPassword} onConfirm={setConfirm} />
