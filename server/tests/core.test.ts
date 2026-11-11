@@ -16,6 +16,7 @@ import { bootstrapTenant } from '../services/tenant.js';
 import { toolsFor } from '../services/ask.js';
 import { SYSTEM_ROLES } from '../lib/permissions.js';
 import { resendTransport } from '../services/email.js';
+import { getOrCreateKey, ensureNetlifySecrets, type KeyStore } from '../lib/secrets.js';
 
 after(() => pool.end());
 
@@ -110,4 +111,43 @@ test('Resend transport sends the documented payload and surfaces API errors', as
     assert.deepEqual(body.to, ['a@b.co']); assert.equal(body.reply_to, 'help@example.org'); assert.equal(body.attachments[0].content, Buffer.from('pdf').toString('base64'));
     await assert.rejects(t.sendMail({ from: 'x', to: 'a@b.co', subject: 's' }), /Resend 403: domain not verified/);
   } finally { globalThis.fetch = realFetch; }
+});
+
+/** In-memory stand-in for a Netlify Blobs store; `staleReads` simulates eventual consistency. */
+function fakeStore(staleReads = 0) {
+  const data = new Map<string, string>(); let stale = staleReads;
+  const store: KeyStore & { data: Map<string, string> } = {
+    data,
+    async get(k) { if (stale > 0) { stale--; return null; } return data.get(k) ?? null; },
+    async set(k, v, o) { if (o.onlyIfNew && data.has(k)) return { modified: false }; data.set(k, v); return { modified: true }; },
+  };
+  return store;
+}
+
+test('Netlify keys: created once, reused, and races settle on one saved value', async () => {
+  const s = fakeStore();
+  const first = await getOrCreateKey(s, 'k', () => 'A', 1);
+  assert.equal(first, 'A');
+  assert.equal(await getOrCreateKey(s, 'k', () => 'B', 1), 'A', 'existing key is reused, never replaced');
+
+  // Two cold starts: the second's first read is stale (null) and its save loses; it must adopt the winner.
+  const race = fakeStore(); race.data.set('k', 'WINNER');
+  let reads = 0; const orig = race.get.bind(race);
+  race.get = async (k, o) => (reads++ < 2 ? null : orig(k, o));
+  assert.equal(await getOrCreateKey(race, 'k', () => 'LOSER', 1), 'WINNER');
+
+  const never: KeyStore = { get: async () => null, set: async () => ({ modified: false }) };
+  await assert.rejects(getOrCreateKey(never, 'k', () => 'x', 1, 3), /still being created/);
+
+  const saved = { JWT_SECRET: process.env.JWT_SECRET, ENCRYPTION_KEY: process.env.ENCRYPTION_KEY };
+  delete process.env.JWT_SECRET; delete process.env.ENCRYPTION_KEY;
+  try {
+    const st = fakeStore();
+    await ensureNetlifySecrets(st);
+    assert.equal(Buffer.from(process.env.ENCRYPTION_KEY!, 'base64').length, 32, 'encryption key is 32 bytes');
+    assert.ok((process.env.JWT_SECRET ?? '').length >= 32);
+    assert.equal(st.data.get('encryption-key-v1'), process.env.ENCRYPTION_KEY);
+  } finally {
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
 });

@@ -12,7 +12,9 @@ const useBlobs = () => process.env.AINP_STORAGE === 'netlify-blobs';
 
 async function blobStore() {
   const { getStore } = await import('@netlify/blobs');
-  return getStore({ name: 'attachments', consistency: 'strong' });
+  // Default (eventual) consistency: strong reads need Netlify's newer function format. File keys are
+  // random and never read before they are written, so a new upload is readable straight away.
+  return getStore({ name: 'attachments' });
 }
 
 function localPath(key: string) {
