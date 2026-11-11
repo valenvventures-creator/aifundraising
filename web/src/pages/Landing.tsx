@@ -399,13 +399,13 @@ function BeforeAfter() {
         <div className="lp-switch-row" data-reveal data-delay="100">
           <span className={after ? '' : 'on'}>Today</span>
           <button type="button" role="switch" aria-checked={after} aria-label="Show with A.I. Nonprofits" className="lp-switch" onClick={flip} />
-          <span className={after ? 'on' : ''}>With A.I. Nonprofits</span>
+          <span className={after ? 'on' : ''}>After A.I. Nonprofits</span>
         </div>
         <div ref={ref} className={`lp-ba${after ? ' is-after' : ''}`} aria-live="polite">
           {BEFORE_AFTER.map((b, i) => (
             <div key={b.title} className="lp-ba-card" data-reveal data-delay={i * 90}>
               <div className="lp-ba-face before" aria-hidden={after}><span className="lp-tag bad">Today</span><h3>{b.title}</h3><p>{b.before}</p></div>
-              <div className="lp-ba-face after" aria-hidden={!after}><span className="lp-tag good">With A.I. Nonprofits</span><h3>{b.title}</h3><p>{b.after}</p></div>
+              <div className="lp-ba-face after" aria-hidden={!after}><span className="lp-tag good">After A.I. Nonprofits</span><h3>{b.title}</h3><p>{b.after}</p></div>
             </div>
           ))}
         </div>
