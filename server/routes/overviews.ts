@@ -401,3 +401,98 @@ overviewsRouter.get('/overview/ask', h(async (req, res) => {
   });
   res.json(out);
 }));
+
+// ───────────────────────── Growth ─────────────────────────
+overviewsRouter.get('/overview/growth', h(async (req, res) => {
+  requirePerm(req.auth, 'donors.read');
+  const a = req.auth!; const P = readPeriod(req); const { q, q1 } = scopedQuery(a, P.ministry);
+  const cur = [P.from, P.to], both = [P.from, P.to, P.prevFrom, P.prevTo];
+  const out = await tx(req, async (db) => {
+    const r: any = { period: P };
+    r.k = await q1(db, (s) => `WITH g AS (SELECT * FROM gifts g WHERE NOT g.refunded AND ${s('g.ministry_id')}),
+      firsts AS (SELECT donor_id, min(gift_date) f FROM gifts WHERE NOT refunded GROUP BY 1),
+      c AS (SELECT donor_id, sum(amount) amt FROM g WHERE gift_date BETWEEN $1 AND $2 GROUP BY 1),
+      pv AS (SELECT donor_id, sum(amount) amt FROM g WHERE gift_date BETWEEN $3 AND $4 GROUP BY 1),
+      pp AS (SELECT donor_id FROM g WHERE gift_date BETWEEN ($3::date - ($2::date - $1::date + 1)) AND ($3::date - 1) GROUP BY 1)
+      SELECT coalesce((SELECT sum(amt) FROM c),0)::float given, coalesce((SELECT sum(amt) FROM pv),0)::float given_prev,
+        (SELECT count(*) FROM c)::int donors, (SELECT count(*) FROM pv)::int donors_prev,
+        (SELECT count(*) FROM c JOIN firsts f USING (donor_id) WHERE f.f BETWEEN $1 AND $2)::int new_donors,
+        (SELECT count(*) FROM pv JOIN firsts f USING (donor_id) WHERE f.f BETWEEN $3 AND $4)::int new_donors_prev,
+        (SELECT count(*) FROM pv WHERE donor_id IN (SELECT donor_id FROM c))::int retained,
+        (SELECT count(*) FROM pp)::int pp_donors, (SELECT count(*) FROM pp WHERE donor_id IN (SELECT donor_id FROM pv))::int pp_retained,
+        (SELECT count(*) FROM c JOIN pv USING (donor_id) WHERE c.amt > pv.amt * 1.05)::int upgraded,
+        (SELECT count(*) FROM c WHERE amt >= 5000)::int major, (SELECT count(*) FROM pv WHERE amt >= 5000)::int major_prev,
+        (SELECT count(*) FROM c JOIN firsts f USING (donor_id) WHERE f.f BETWEEN $1 AND $2 AND (SELECT count(*) FROM g g2 WHERE g2.donor_id=c.donor_id AND g2.gift_date BETWEEN $1 AND $2) > 1)::int second_gift`, both);
+    const k = r.k;
+    k.retention = k.donors_prev ? round2((k.retained / k.donors_prev) * 100) : null;
+    k.retention_prev = k.pp_donors ? round2((k.pp_retained / k.pp_donors) * 100) : null;
+    k.per_donor = k.donors ? round2(k.given / k.donors) : 0; k.per_donor_prev = k.donors_prev ? round2(k.given_prev / k.donors_prev) : 0;
+    k.second_gift_rate = k.new_donors ? round2((k.second_gift / k.new_donors) * 100) : null;
+    r.recurring = await q1(db, (s) => `SELECT count(*) FILTER (WHERE r.started_on BETWEEN $1 AND $2)::int started, count(*) FILTER (WHERE r.started_on BETWEEN $3 AND $4)::int started_prev,
+        count(*) FILTER (WHERE r.status='active')::int active,
+        coalesce(sum(CASE r.frequency WHEN 'monthly' THEN r.amount WHEN 'quarterly' THEN r.amount/3 WHEN 'annually' THEN r.amount/12 WHEN 'weekly' THEN r.amount*52/12 ELSE r.amount END) FILTER (WHERE r.status='active'),0)::float monthly,
+        coalesce(sum(CASE r.frequency WHEN 'monthly' THEN r.amount WHEN 'quarterly' THEN r.amount/3 WHEN 'annually' THEN r.amount/12 WHEN 'weekly' THEN r.amount*52/12 ELSE r.amount END) FILTER (WHERE r.started_on BETWEEN $1 AND $2),0)::float monthly_added,
+        count(*) FILTER (WHERE r.status IN ('cancelled','failed','paused'))::int stopped
+      FROM recurring_gifts r JOIN donors d ON d.id=r.donor_id WHERE ${s('d.ministry_id')}`, both);
+    // Where new donors came from
+    r.sources = await q(db, (s) => `WITH firsts AS (SELECT DISTINCT ON (donor_id) donor_id, gift_date, campaign_id, email_campaign_id, provider, payment_method FROM gifts WHERE NOT refunded ORDER BY donor_id, gift_date, created_at)
+      SELECT CASE WHEN EXISTS (SELECT 1 FROM registrations rg JOIN events e ON e.id=rg.event_id WHERE rg.donor_id=f.donor_id AND e.starts_at::date BETWEEN f.gift_date - 60 AND f.gift_date) THEN 'Attended an event first'
+        WHEN f.email_campaign_id IS NOT NULL THEN 'Responded to an email' WHEN f.campaign_id IS NOT NULL THEN 'A campaign'
+        WHEN f.provider IN ('stripe','square','paypal') THEN 'Gave online' WHEN nullif(d.source,'') IS NOT NULL THEN initcap(d.source) ELSE 'Other / not recorded' END AS key, count(*)::int n
+      FROM firsts f JOIN donors d ON d.id=f.donor_id WHERE f.gift_date BETWEEN $1 AND $2 AND ${s('d.ministry_id')} GROUP BY 1 ORDER BY 2 DESC`, cur);
+    r.firstCampaigns = await q(db, (s) => `WITH firsts AS (SELECT DISTINCT ON (donor_id) donor_id, gift_date, campaign_id FROM gifts WHERE NOT refunded ORDER BY donor_id, gift_date, created_at)
+      SELECT c.id, c.name AS key, count(*)::int n FROM firsts f JOIN campaigns c ON c.id=f.campaign_id WHERE f.gift_date BETWEEN $1 AND $2 AND ${s('c.ministry_id')} GROUP BY c.id ORDER BY 3 DESC LIMIT 5`, cur);
+    // Gift size ladder this period
+    r.ladder = await q(db, (s) => `WITH c AS (SELECT donor_id, sum(amount) amt FROM gifts g WHERE NOT refunded AND gift_date BETWEEN $1 AND $2 AND ${s('g.ministry_id')} GROUP BY 1)
+      SELECT b AS key, count(c.donor_id)::int n, coalesce(sum(c.amt),0)::float amount FROM (VALUES (1,'Under $100',0,100),(2,'$100–$499',100,500),(3,'$500–$999',500,1000),(4,'$1,000–$4,999',1000,5000),(5,'$5,000–$24,999',5000,25000),(6,'$25,000+',25000,1e12)) v(o,b,lo,hi)
+      LEFT JOIN c ON c.amt >= v.lo AND c.amt < v.hi GROUP BY v.o, v.b ORDER BY v.o`, cur);
+    r.pipeline = await q(db, (s) => `SELECT intelligence->>'categoryLabel' AS key, count(*)::int n, coalesce(sum((intelligence->>'opportunityValue')::numeric),0)::float amount FROM donors d
+      WHERE NOT archived AND merged_into IS NULL AND intelligence ? 'category' AND intelligence->>'category' NOT IN ('cultivate') AND ${s('d.ministry_id')} GROUP BY 1 ORDER BY 3 DESC NULLS LAST LIMIT 8`);
+    r.health = await q(db, (s) => `SELECT health_status AS key, count(*)::int n FROM donors d WHERE NOT archived AND merged_into IS NULL AND ${s('d.ministry_id')} GROUP BY 1`);
+    // Other growth drivers across the app
+    if (can(a, 'grants.read')) r.grants = await q1(db, (s) => `SELECT coalesce(sum(awarded_amount) FILTER (WHERE status IN ('awarded','reporting','closed') AND decision_on BETWEEN $1 AND $2),0)::float awarded,
+        coalesce(sum(request_amount) FILTER (WHERE status IN ('submitted','under_review')),0)::float pending, count(*) FILTER (WHERE status IN ('researching','qualified','preparing'))::int preparing,
+        count(*) FILTER (WHERE status IN ('awarded','reporting','closed','declined') AND decision_on BETWEEN $1 AND $2)::int decided,
+        count(*) FILTER (WHERE status IN ('awarded','reporting','closed') AND decision_on BETWEEN $1 AND $2)::int won FROM grants g WHERE ${s('g.ministry_id')}`, cur);
+    if (can(a, 'events.read')) r.events = await q1(db, (s) => `SELECT count(DISTINCT r.donor_id) FILTER (WHERE r.status='attended')::int donor_guests,
+        count(DISTINCT r.id) FILTER (WHERE r.status='attended' AND r.donor_id IS NULL)::int new_faces FROM registrations r JOIN events e ON e.id=r.event_id WHERE e.starts_at::date BETWEEN $1 AND $2 AND ${s('e.ministry_id')}`, cur);
+    if (can(a, 'email.read')) r.email = await q1(db, (s) => `SELECT count(*) FILTER (WHERE d.email IS NOT NULL AND d.created_at::date BETWEEN $1 AND $2)::int new_contacts, count(*) FILTER (WHERE d.email IS NOT NULL)::int reachable,
+        (SELECT count(*) FROM email_suppressions)::int unsubscribed FROM donors d WHERE NOT archived AND ${s('d.ministry_id')}`, cur);
+    // Goals with pace
+    const goals = await q(db, (s) => `SELECT * FROM growth_goals gg WHERE (gg.ministry_id IS NULL OR ${s('gg.ministry_id')}) ORDER BY period_end`);
+    const sql: Record<string, string> = {
+      giving_total: `SELECT coalesce(sum(amount),0)::float v FROM gifts WHERE NOT refunded AND gift_date BETWEEN $1 AND $2`,
+      new_donors: `SELECT count(*)::float v FROM (SELECT donor_id, min(gift_date) f FROM gifts WHERE NOT refunded GROUP BY 1) x WHERE f BETWEEN $1 AND $2`,
+      recurring_donors: `SELECT count(DISTINCT donor_id)::float v FROM recurring_gifts WHERE status='active' AND $1::date IS NOT NULL AND $2::date IS NOT NULL`,
+      major_donors: `SELECT count(*)::float v FROM (SELECT donor_id, sum(amount) s FROM gifts WHERE NOT refunded AND gift_date BETWEEN $1 AND $2 GROUP BY 1) x WHERE s >= 5000`,
+      retention_rate: `SELECT CASE WHEN count(*)=0 THEN 0 ELSE round(100.0 * count(*) FILTER (WHERE EXISTS (SELECT 1 FROM gifts g2 WHERE g2.donor_id=p.donor_id AND g2.gift_date BETWEEN $1 AND $2)) / count(*),1) END::float v
+        FROM (SELECT DISTINCT donor_id FROM gifts WHERE gift_date BETWEEN ($1::date - interval '1 year') AND ($1::date - interval '1 day')) p`,
+    };
+    r.goals = [];
+    for (const g of goals) {
+      const v = sql[g.metric] ? Number((await one(db, sql[g.metric], [g.period_start, g.period_end]))?.v ?? 0) : 0;
+      const start = Date.parse(String(g.period_start)), end = Date.parse(String(g.period_end));
+      const elapsed = Math.max(0, Math.min(1, (Date.now() - start) / Math.max(1, end - start)));
+      const pct = Number(g.target) ? v / Number(g.target) : 0;
+      r.goals.push({ id: g.id, name: g.name, metric: g.metric, target: Number(g.target), actual: v, pct: Math.round(pct * 100), elapsed: Math.round(elapsed * 100),
+        status: pct >= 1 ? 'met' : g.metric === 'retention_rate' || g.metric === 'recurring_donors' ? (pct >= 0.9 ? 'on_track' : 'behind') : pct >= elapsed - 0.05 ? 'on_track' : 'behind', period_end: g.period_end });
+    }
+    const months = monthsFor(P);
+    r.trend = fill(months, await q(db, (s) => `WITH firsts AS (SELECT donor_id, min(gift_date) f FROM gifts WHERE NOT refunded GROUP BY 1)
+      SELECT to_char(f.f,'YYYY-MM') AS month, count(*)::int new_donors FROM firsts f JOIN donors d ON d.id=f.donor_id WHERE f.f BETWEEN $1 AND $2 AND ${s('d.ministry_id')} GROUP BY 1`, [seriesStart(months), P.to]), ['new_donors']);
+    const rec = await q(db, (s) => `SELECT to_char(r.started_on,'YYYY-MM') AS month, count(*)::int started FROM recurring_gifts r JOIN donors d ON d.id=r.donor_id WHERE r.started_on BETWEEN $1 AND $2 AND ${s('d.ministry_id')} GROUP BY 1`, [seriesStart(months), P.to]);
+    r.trend.forEach((t: any) => { t.recurring = Number(rec.find((x: any) => x.month === t.month)?.started ?? 0); });
+    // Plain-language recommendations
+    const recs: { text: string; link: string }[] = [];
+    if (k.retention !== null && k.retention < 45) recs.push({ text: `Only ${Math.round(k.retention)}% of last period's donors have given again. Thank donors within 48 hours and follow up with first-time givers.`, link: '/donors/giving/priorities/recovery' });
+    if (k.new_donors < k.new_donors_prev) recs.push({ text: `New donors are behind the previous period (${k.new_donors} vs ${k.new_donors_prev}). Invite guests to an event or run a peer campaign.`, link: '/donors/events' });
+    if (k.second_gift_rate !== null && k.second_gift_rate < 25 && k.new_donors >= 5) recs.push({ text: `${Math.round(k.second_gift_rate)}% of new donors have made a second gift. A welcome series in Email can lift that.`, link: '/donors/email/journeys' });
+    if (!r.recurring.started) recs.push({ text: 'No new monthly donors this period. Add a monthly-giving invitation to thank-you notes and receipts.', link: '/donors/giving/outreach' });
+    const lapsing = r.health.find((x: any) => x.key === 'lapsing')?.n ?? 0;
+    if (lapsing) recs.push({ text: `${lapsing} donors are lapsing. Work the recovery list before they stop giving.`, link: '/donors/giving/priorities/recovery' });
+    if (r.grants && r.grants.preparing === 0) recs.push({ text: 'No grants are being prepared. Search for grants your organization can apply for.', link: '/donors/grants' });
+    r.recommendations = recs;
+    return r;
+  });
+  res.json(out);
+}));

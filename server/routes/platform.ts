@@ -12,6 +12,7 @@ import { audit } from '../lib/audit.js';
 import { many, one, type Db } from '../db/pool.js';
 import { DONOR_NAME_SQL, round2, today, addDays } from '../lib/util.js';
 import { newInviteToken } from './auth.js';
+import { readPeriod, scopedQuery, LEDGER_MINISTRY } from '../lib/period.js';
 import { config } from '../config.js';
 import { PERMISSIONS } from '../lib/permissions.js';
 import { AUTOMATIONS } from '../services/tenant.js';
@@ -107,6 +108,44 @@ platformRouter.get('/dashboard', h(async (req, res) => {
     if (can(a, 'email.read')) r.email = await one(db, `SELECT count(*) FILTER (WHERE status='sent' AND sent_at > now() - interval '30 days')::int sent_30, count(*) FILTER (WHERE status='scheduled')::int scheduled FROM email_campaigns`);
     const t = await one(db, `SELECT onboarding, workspace_term, workspace_term_plural FROM tenants WHERE id=$1`, [a.tenantId]);
     r.onboarding = await onboardingStatus(db, t.onboarding ?? {});
+    // Period figures for the Home headline (defaults to this year), compared with the previous period
+    {
+      const P = readPeriod(req); const { q1 } = scopedQuery(a, ministry);
+      const both = [P.from, P.to, P.prevFrom, P.prevTo];
+      const per: any = { from: P.from, to: P.to };
+      if (can(a, 'donors.read')) Object.assign(per, await q1(db, (s) => `WITH g AS (SELECT * FROM gifts g WHERE NOT g.refunded AND ${s('g.ministry_id')}), firsts AS (SELECT donor_id, min(gift_date) f FROM gifts WHERE NOT refunded GROUP BY 1)
+        SELECT coalesce((SELECT sum(amount) FROM g WHERE gift_date BETWEEN $1 AND $2),0)::float given, coalesce((SELECT sum(amount) FROM g WHERE gift_date BETWEEN $3 AND $4),0)::float given_prev,
+          (SELECT count(DISTINCT donor_id) FROM g WHERE gift_date BETWEEN $1 AND $2)::int donors, (SELECT count(DISTINCT donor_id) FROM g WHERE gift_date BETWEEN $3 AND $4)::int donors_prev,
+          (SELECT count(*) FROM firsts f WHERE f.f BETWEEN $1 AND $2 AND donor_id IN (SELECT donor_id FROM g))::int new_donors,
+          (SELECT count(*) FROM firsts f WHERE f.f BETWEEN $3 AND $4 AND donor_id IN (SELECT donor_id FROM g))::int new_donors_prev`, both));
+      if (can(a, 'finance.read')) Object.assign(per, await q1(db, (s) => `SELECT coalesce(sum(jl.debit-jl.credit) FILTER (WHERE ac.type='expense' AND je.entry_date BETWEEN $1 AND $2),0)::float spent,
+          coalesce(sum(jl.debit-jl.credit) FILTER (WHERE ac.type='expense' AND je.entry_date BETWEEN $3 AND $4),0)::float spent_prev,
+          coalesce(sum(jl.credit-jl.debit) FILTER (WHERE ac.type='revenue' AND je.entry_date BETWEEN $1 AND $2),0)::float income
+        FROM journal_lines jl JOIN journal_entries je ON je.id=jl.entry_id AND je.status='posted' JOIN accounts ac ON ac.id=jl.account_id WHERE ${s(LEDGER_MINISTRY)}`, both));
+      if (can(a, 'grants.read')) Object.assign(per, await q1(db, (s) => `SELECT coalesce(sum(awarded_amount) FILTER (WHERE status IN ('awarded','reporting','closed') AND decision_on BETWEEN $1 AND $2),0)::float grants_awarded,
+          count(*) FILTER (WHERE status IN ('submitted','under_review'))::int grants_pending_n FROM grants g WHERE ${s('g.ministry_id')}`, [P.from, P.to]));
+      if (can(a, 'work.read')) Object.assign(per, await q1(db, (s) => `SELECT coalesce(sum(hours) FILTER (WHERE entry_date BETWEEN $1 AND $2),0)::float hours,
+          (SELECT count(*) FROM tasks t WHERE t.completed_at::date BETWEEN $1 AND $2 AND ${s('t.ministry_id')})::int tasks_done FROM time_entries te WHERE ${s('te.ministry_id')}`, [P.from, P.to]));
+      if (can(a, 'impact.read')) Object.assign(per, await q1(db, (s) => `SELECT coalesce((SELECT sum(beneficiaries) FROM impact_stories st WHERE st.story_date BETWEEN $1 AND $2 AND ${s('st.ministry_id')}),0)::int served,
+          (SELECT count(DISTINCT e.metric_id) FROM impact_entries e JOIN impact_metrics m ON m.id=e.metric_id WHERE e.entry_date BETWEEN $1 AND $2 AND ${s('m.ministry_id')})::int results`, [P.from, P.to]));
+      if (can(a, 'events.read')) Object.assign(per, await q1(db, (s) => `SELECT count(DISTINCT e.id)::int events, coalesce(sum(1+r.guests) FILTER (WHERE r.status='attended'),0)::int attended
+        FROM events e LEFT JOIN registrations r ON r.event_id=e.id WHERE e.status<>'cancelled' AND e.starts_at::date BETWEEN $1 AND $2 AND ${s('e.ministry_id')}`, [P.from, P.to]));
+      r.period = per;
+      if (r.campaigns?.length) {
+        const ids = r.campaigns.map((c: any) => c.id);
+        const rows = await many(db, `SELECT campaign_id, coalesce(sum(amount),0)::float v FROM gifts WHERE NOT refunded AND campaign_id = ANY($1::uuid[]) AND gift_date BETWEEN $2 AND $3 GROUP BY 1`, [ids, P.from, P.to]);
+        r.campaigns.forEach((c: any) => { c.raised_period = rows.find((x) => x.campaign_id === c.id)?.v ?? 0; });
+      }
+      if (r.finance) {
+        const fp = await fundSummaries(db, P.from, P.to);
+        r.finance.funds = r.finance.funds.map((f: any) => { const x = fp.find((y) => y.id === f.id); return { ...f, period_income: x?.period_income ?? 0, period_expense: x?.period_expense ?? 0 }; });
+      }
+      if (r.impact?.length) {
+        const ids = r.impact.map((m: any) => m.id);
+        const rows = await many(db, `SELECT metric_id, coalesce(sum(value),0)::float v FROM impact_entries WHERE metric_id = ANY($1::uuid[]) AND entry_date BETWEEN $2 AND $3 GROUP BY 1`, [ids, P.from, P.to]);
+        r.impact.forEach((m: any) => { m.period = rows.find((x) => x.metric_id === m.id)?.v ?? 0; });
+      }
+    }
     return r;
   });
   res.json(out);

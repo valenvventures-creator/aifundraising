@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Plus, ArrowRight, CheckCircle2, Circle, Users, AlertTriangle } from 'lucide-react';
+import { Plus, ArrowRight, CheckCircle2, Circle, Users, AlertTriangle, HandCoins, Wallet, Award, HeartHandshake, CalendarCheck, Clock, UserPlus } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { api, useApi } from '../lib/api';
+import { api, useApi, qs } from '../lib/api';
 import { useSession } from '../lib/session';
 import { Button, Card, Metric, PageHeader, StateTabs, Spinner, ErrorBox, Modal, Field, Input, Textarea, Progress, Chip, useAction, Empty } from '../components/ui';
 import { money, num, date, dateTime, label } from '../lib/format';
 import { DonorsOverview } from './Donors';
 import { SetupGuide } from './Setup';
-import { Meter, monthTick, shortMoney } from '../components/overview';
+import { Meter, monthTick, shortMoney, usePeriod, Hero, Tile, Delta, Source } from '../components/overview';
 
 function EmptyHint({ text, to, cta }: { text: string; to: string; cta: string }) {
   return <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500">{text} <Link to={to} className="font-medium text-brand-600 hover:underline">{cta}</Link></div>;
@@ -67,45 +67,62 @@ export function WorkspaceHome() {
 }
 
 export function Dashboard({ ministryId }: { ministryId?: string }) {
-  const { data: d, loading, error, reload } = useApi<any>(`/dashboard${ministryId ? `?ministry_id=${ministryId}` : ''}`);
+  const per = usePeriod('ytd');
+  const ministry = ministryId ?? per.ministry;
+  const { data: d, loading, error, reload } = useApi<any>(`/dashboard${qs({ from: per.range.from, to: per.range.to, ministry_id: ministry })}`);
   const { can } = useSession();
   if (error) return <ErrorBox error={error} onRetry={reload} />;
-  if (loading || !d) return <Spinner />;
-  const yoy = d.giving?.last_ytd ? Math.round(((d.giving.ytd - d.giving.last_ytd) / d.giving.last_ytd) * 100) : null;
+  if (loading && !d) return <Spinner />;
+  if (!d) return <Spinner />;
+  const P = d.period ?? {};
+  const live: { label: string; value: React.ReactNode; to: string; tone?: string }[] = [];
+  if (d.recurring) live.push({ label: 'Monthly recurring', value: money(d.recurring.monthly), to: '/donors/giving/donors?recurring=true' });
+  if (d.donors) live.push({ label: 'Opportunity (estimate)', value: money(d.donors.pipeline), to: '/donors/giving/priorities' });
+  if (d.donors) live.push({ label: 'Lapsing / lapsed', value: `${num(d.donors.lapsing)} / ${num(d.donors.lapsed)}`, to: '/donors/giving/priorities/recovery', tone: d.donors.lapsing + d.donors.lapsed ? 'warn' : undefined });
+  if (d.giving) live.push({ label: 'Thank-yous / receipts to send', value: `${num(d.giving.thanks_pending)} / ${num(d.giving.receipts_pending)}`, to: '/donors/giving/receipts', tone: d.giving.thanks_pending + d.giving.receipts_pending ? 'warn' : undefined });
+  if (d.finance) live.push({ label: 'Unrestricted funds', value: money(d.finance.unrestricted), to: '/money/accounting/funds', tone: d.finance.unrestricted < 0 ? 'bad' : undefined });
+  if (d.tasks) live.push({ label: 'Tasks overdue', value: num(d.tasks.overdue), to: '/work/tasks?due=overdue', tone: d.tasks.overdue ? 'bad' : undefined });
   return (
     <div className="space-y-5">
       {!d.onboarding.complete && <SetupGuide steps={d.onboarding.steps} onChange={reload} />}
-      {d.giving && <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <Metric label="Giving YTD" value={money(d.giving.ytd)} sub={yoy !== null ? `${yoy >= 0 ? '+' : ''}${yoy}% vs last year` : undefined} tone="brand" to="/money/accounting/giving" />
-        <Metric label="Lifetime giving" value={money(d.giving.lifetime)} to="/donors/giving/reports" />
-        <Metric label="Total donors" value={num(d.donors.total)} sub={`${d.donors.new_ytd} new this year`} to="/donors/giving/donors" />
-        <Metric label="Active donors" value={num(d.donors.active)} tone="good" to="/donors/giving/donors?health=active,engaged" />
-        <Metric label="Lapsing / lapsed" value={`${d.donors.lapsing} / ${d.donors.lapsed}`} tone="warn" to="/donors/giving/priorities/recovery" />
-        <Metric label="Opportunity pipeline" value={money(d.donors.pipeline)} sub="estimate" to="/donors/giving/priorities" />
-        <Metric label="Recurring / month" value={money(d.recurring.monthly)} sub={`${d.recurring.n} active plans`} to="/donors/giving/donors?recurring=true" />
-        <Metric label="Receipts outstanding" value={num(d.giving.receipts_pending)} tone={d.giving.receipts_pending ? 'warn' : 'default'} to="/donors/giving" />
-        <Metric label="Thank-yous outstanding" value={num(d.giving.thanks_pending)} tone={d.giving.thanks_pending ? 'warn' : 'default'} to="/donors/giving" />
-        {d.finance && <Metric label="Restricted balances" value={money(d.finance.restricted)} to="/money/accounting/funds" />}
-        {d.finance && <Metric label="Unrestricted balance" value={money(d.finance.unrestricted)} tone={d.finance.unrestricted < 0 ? 'bad' : 'default'} to="/money/accounting/funds" />}
-        {d.finance && <Metric label="Expenses YTD" value={money(d.finance.expenses_ytd)} to="/money/reports" />}
-        {d.tasks && <Metric label="Tasks overdue" value={num(d.tasks.overdue)} tone={d.tasks.overdue ? 'bad' : 'good'} to="/work/tasks?due=overdue" />}
-        {d.grantTotals && <Metric label="Grants pending" value={money(d.grantTotals.pending)} to="/donors/grants" />}
-        {d.grantTotals && <Metric label="Grants awarded YTD" value={money(d.grantTotals.awarded_ytd)} tone="good" to="/donors/grants" />}
-      </div>}
+      {per.controls(undefined, ministryId === undefined)}
+      <Hero eyebrow="At a glance" title={`Your organization in ${per.range.label}`}>
+        {P.given !== undefined && <Tile icon={HandCoins} label="Given" value={money(P.given)} sub={`${num(P.donors)} donors · ${num(P.new_donors)} new`} delta={<Delta now={P.given} prev={P.given_prev} />} to="/donors/giving" />}
+        {P.donors !== undefined && <Tile icon={Users} label="Donors who gave" value={num(P.donors)} sub={`${num(d.donors?.total ?? 0)} donors on file`} delta={<Delta now={P.donors} prev={P.donors_prev} />} to="/donors/giving/donors" />}
+        {P.spent !== undefined && <Tile icon={Wallet} label="Put to work (spent)" value={money(P.spent)} sub={`${money(P.income)} came in`} delta={<Delta now={P.spent} prev={P.spent_prev} invert />} to="/money/accounting" />}
+        {P.grants_awarded !== undefined && <Tile icon={Award} label="Grants awarded" value={money(P.grants_awarded)} sub={`${num(P.grants_pending_n)} waiting for a decision`} to="/donors/grants?tab=pipeline" />}
+        {P.served !== undefined && <Tile icon={HeartHandshake} label="People served" value={num(P.served)} sub={`${num(P.results)} measures with results`} kind="entered" to="/impact" />}
+        {P.attended !== undefined && <Tile icon={CalendarCheck} label="Event attendance" value={num(P.attended)} sub={`${num(P.events)} events`} to="/donors/events" />}
+        {P.hours !== undefined && <Tile icon={Clock} label="Hours logged" value={num(Math.round(P.hours))} sub={`${num(P.tasks_done)} tasks completed`} to="/work" />}
+        {P.new_donors !== undefined && <Tile icon={UserPlus} label="New donors" value={num(P.new_donors)} delta={<Delta now={P.new_donors} prev={P.new_donors_prev} />} to="/growth" />}
+      </Hero>
+      {live.length > 0 && <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">{live.map((x) => (
+        <Link key={x.label} to={x.to} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between gap-1 text-[11px] uppercase tracking-wide text-slate-400">{x.label}<Source kind="live" light /></div>
+          <div className={`mt-1 truncate text-lg font-bold ${x.tone === 'bad' ? 'text-red-600' : x.tone === 'warn' ? 'text-amber-600' : 'text-slate-900'}`}>{x.value}</div>
+        </Link>))}</div>}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         {d.monthly && <Card title="Giving — last 12 months" className="xl:col-span-2">
           <div className="h-64"><ResponsiveContainer><BarChart data={d.monthly}><defs><linearGradient id="homeGiving" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#efba11" /><stop offset="1" stopColor="#b38a1c" /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={monthTick} /><YAxis tickFormatter={shortMoney} tick={{ fontSize: 11 }} width={44} /><Tooltip formatter={(v: any) => money(v)} labelFormatter={(m: any) => monthTick(String(m))} cursor={{ fill: '#f8fafc' }} /><Bar dataKey="total" name="Given" fill="url(#homeGiving)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div>
         </Card>}
-        {d.myTasks && <Card title="My tasks" actions={<Link to="/work/tasks" className="text-xs text-brand-600 hover:underline">All tasks</Link>}>
-          {!d.myTasks.length ? <p className="text-sm text-slate-500">Nothing assigned to you.</p> : <ul className="space-y-2">{d.myTasks.map((t: any) => <li key={t.id}><Link to={`/work/tasks?open=${t.id}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50"><span className="truncate text-sm">{t.title}</span><span className={`shrink-0 text-xs ${t.due_date && t.due_date < new Date().toISOString().slice(0, 10) ? 'text-red-600' : 'text-slate-500'}`}>{date(t.due_date)}</span></Link></li>)}</ul>}
+        {d.myTasks && <Card title="My tasks" subtitle="Assigned to you, soonest first." actions={<Link to="/work/tasks" className="text-xs text-brand-600 hover:underline">All tasks</Link>}>
+          {!d.myTasks.length ? <EmptyHint text="Nothing assigned to you." to="/work/tasks" cta="See all tasks" /> : <ul className="space-y-1.5">{d.myTasks.map((t: any) => {
+            const due = t.due_date ? String(t.due_date).slice(0, 10) : null; const today = new Date().toISOString().slice(0, 10);
+            const tone = !due ? 'bg-slate-100 text-slate-500' : due < today ? 'bg-red-100 text-red-700' : due === today ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600';
+            return <li key={t.id}><Link to={`/work/tasks?open=${t.id}`} className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-slate-50">
+              <span className="relative h-5 w-5 shrink-0 rounded-full border-2 border-slate-300">{t.progress > 0 && <span className="absolute inset-0.5 rounded-full bg-brand-500" style={{ clipPath: `inset(${100 - t.progress}% 0 0 0)` }} />}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{t.title}</span>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>{due ? (due < today ? 'Overdue' : due === today ? 'Today' : date(due)) : 'No date'}</span>
+            </Link></li>;
+          })}</ul>}
         </Card>}
-        {d.campaigns && <Card title="Active campaigns" subtitle="Progress toward each goal, with the last 30 days." actions={<Link to="/donors/giving/campaigns" className="text-xs text-brand-600 hover:underline">All campaigns</Link>}>
+        {d.campaigns && <Card title="Active campaigns" subtitle="Progress toward each goal, and what came in during this period." actions={<Link to="/donors/giving/campaigns" className="text-xs text-brand-600 hover:underline">All campaigns</Link>}>
           {!d.campaigns.length ? <EmptyHint text="No active campaigns." to="/donors/giving/campaigns" cta="Start a campaign" /> : <ul className="space-y-4">{d.campaigns.map((c: any) => {
             const pct = c.goal ? Math.round((c.raised / c.goal) * 100) : null; const left = c.ends_on ? Math.ceil((new Date(`${String(c.ends_on).slice(0, 10)}T23:59:59`).getTime() - Date.now()) / 86400000) : null;
             return <li key={c.id}><Link to={`/donors/giving/campaigns/${c.id}`} className="group block">
               <div className="flex items-baseline justify-between gap-2"><span className="truncate text-sm font-semibold text-slate-800 group-hover:text-brand-700">{c.name}</span>{pct !== null && <span className={`shrink-0 text-xs font-bold ${pct >= 100 ? 'text-emerald-600' : 'text-gold-600'}`}>{pct}%</span>}</div>
               <Meter value={c.raised} max={c.goal || c.raised} tone={pct !== null && pct >= 100 ? 'good' : 'gold'} className="mt-1.5 h-2" />
-              <div className="mt-1 flex flex-wrap justify-between gap-x-3 text-[11px] text-slate-500"><span>{money(c.raised)}{c.goal ? ` of ${money(c.goal)}` : ''} · {num(c.donors)} donors</span><span>{c.raised_30 ? `+${money(c.raised_30)} last 30 days` : 'no gifts in 30 days'}{left !== null && left >= 0 ? ` · ${left} days left` : ''}</span></div>
+              <div className="mt-1 flex flex-wrap justify-between gap-x-3 text-[11px] text-slate-500"><span>{money(c.raised)}{c.goal ? ` of ${money(c.goal)}` : ''} · {num(c.donors)} donors</span><span>{c.raised_period ? `+${money(c.raised_period)} this period` : 'no gifts this period'}{left !== null && left >= 0 ? ` · ${left} days left` : ''}</span></div>
             </Link></li>;
           })}</ul>}
         </Card>}
@@ -133,7 +150,7 @@ export function Dashboard({ ministryId }: { ministryId?: string }) {
             </Link></li>;
           })}</ul>}
         </Card>}
-        {d.finance && <Card title="Fund balances" subtitle="Balance today, with money in and out this year." actions={<Link to="/money/accounting/funds" className="text-xs text-brand-600 hover:underline">Fund ledger</Link>}>
+        {d.finance && <Card title="Fund balances" subtitle="Balance today, with money in and out during this period." actions={<Link to="/money/accounting/funds" className="text-xs text-brand-600 hover:underline">Fund ledger</Link>}>
           <div className="mb-3 grid grid-cols-2 gap-2 text-center">
             <div className="rounded-xl bg-slate-50 p-2"><div className="text-[10px] uppercase tracking-wide text-slate-400">Unrestricted</div><div className={`font-bold ${d.finance.unrestricted < 0 ? 'text-red-600' : 'text-slate-900'}`}>{money(d.finance.unrestricted)}</div></div>
             <div className="rounded-xl bg-slate-50 p-2"><div className="text-[10px] uppercase tracking-wide text-slate-400">Restricted</div><div className="font-bold text-slate-900">{money(d.finance.restricted)}</div></div>
@@ -145,13 +162,20 @@ export function Dashboard({ ministryId }: { ministryId?: string }) {
               <div className="mt-1 grid grid-cols-2 gap-2"><Meter value={f.period_income ?? 0} max={max} tone="good" /><Meter value={f.period_expense ?? 0} max={max} tone="brand" /></div>
             </Link></li>;
           })}</ul>
-          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-slate-500"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-500" />Unrestricted</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-gold-500" />Restricted</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-500" />Endowment</span><span className="flex items-center gap-1"><i className="h-1.5 w-3 rounded bg-emerald-500" />In</span><span className="flex items-center gap-1"><i className="h-1.5 w-3 rounded bg-brand-500" />Out (this year)</span></div>
+          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-slate-500"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-500" />Unrestricted</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-gold-500" />Restricted</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-500" />Endowment</span><span className="flex items-center gap-1"><i className="h-1.5 w-3 rounded bg-emerald-500" />In</span><span className="flex items-center gap-1"><i className="h-1.5 w-3 rounded bg-brand-500" />Out (this period)</span></div>
         </Card>}
-        {d.budgetAlerts?.length > 0 && <Card title={<span className="flex items-center gap-1.5 text-amber-700"><AlertTriangle className="h-4 w-4" />Budget alerts</span>}>
-          <ul className="space-y-1.5 text-sm">{d.budgetAlerts.map((b: any, i: number) => <li key={i}><Link to={`/money/accounting/budgets/${b.id}`} className="flex justify-between"><span>{b.account}</span><span>{Math.round((b.actual / b.budget) * 100)}% used</span></Link></li>)}</ul>
+        {d.budgetAlerts?.length > 0 && <Card title={<span className="flex items-center gap-1.5 text-amber-700"><AlertTriangle className="h-4 w-4" />Budget alerts</span>} subtitle="Budget lines at 90% or more.">
+          <ul className="space-y-3">{d.budgetAlerts.map((b: any, i: number) => { const used = b.budget ? b.actual / b.budget : 0; return <li key={i}><Link to={`/money/accounting/budgets/${b.id}`} className="block">
+            <div className="flex justify-between gap-2 text-sm"><span className="truncate text-slate-700">{b.account}</span><span className={`shrink-0 font-semibold ${used > 1 ? 'text-red-600' : 'text-amber-600'}`}>{Math.round(used * 100)}% used</span></div>
+            <Meter value={b.actual} max={b.budget} tone={used > 1 ? 'bad' : 'gold'} className="mt-1" /><div className="mt-0.5 text-[11px] text-slate-400">{money(b.actual)} of {money(b.budget)} · {b.name}</div>
+          </Link></li>; })}</ul>
         </Card>}
-        {d.impact && d.impact.length > 0 && <Card title="Impact" actions={<Link to="/impact" className="text-xs text-brand-600 hover:underline">Impact</Link>}>
-          <div className="space-y-3">{d.impact.map((m: any) => <div key={m.id}><div className="flex justify-between text-sm"><span>{m.name}</span><span>{num(m.actual)}{m.target ? ` / ${num(m.target)}` : ''} {m.unit}</span></div>{m.target && <Progress value={m.actual} max={m.target} tone="good" />}</div>)}</div>
+        {d.impact && d.impact.length > 0 && <Card title="Impact" subtitle="Results recorded by your team." actions={<Link to="/impact" className="text-xs text-brand-600 hover:underline">Impact</Link>}>
+          <ul className="space-y-3">{d.impact.map((m: any) => <li key={m.id}><Link to="/impact" className="block">
+            <div className="flex justify-between gap-2 text-sm"><span className="truncate text-slate-700">{m.name}</span><span className="shrink-0 text-slate-900"><b>{num(m.actual)}</b>{m.target ? ` / ${num(m.target)}` : ''} <span className="text-slate-400">{m.unit}</span></span></div>
+            <Meter value={m.actual} max={m.target || m.actual} tone={m.target && m.actual >= m.target ? 'good' : 'gold'} className="mt-1" />
+            <div className="mt-0.5 text-[11px] text-slate-400">{m.period ? `+${num(m.period)} this period` : 'nothing recorded this period'}</div>
+          </Link></li>)}</ul>
         </Card>}
       </div>
       {!can('donors.read') && !can('finance.read') && !can('work.read') && <Empty title="Welcome" icon={<Users className="h-6 w-6" />}>Your role gives you access to specific areas from the left menu.</Empty>}

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ImpactOverview } from './ImpactHub';
 import { MessagesHome } from './MessagesHub';
 import { AdminOverview, SettingsOverview, AskSidebar } from './AdminHub';
+import { GrowthOverview } from './GrowthHub';
 import { Send, Sparkles, Plus, Database, UserPlus, Copy, ShieldCheck } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { api, useApi } from '../lib/api';
@@ -15,31 +16,9 @@ import { money, num, date, dateTime, label, ago, pct } from '../lib/format';
 
 // ───────── Growth ─────────
 export function Growth() {
-  const [ministry, setMinistry] = useState('');
-  const { data } = useApi<any>(`/growth${ministry ? `?ministry_id=${ministry}` : ''}`);
-  const { can } = useSession(); const [goal, setGoal] = useState(false);
   return <>
-    <PageHeader title="Growth" subtitle="Strategy layer over your donor data: acquisition, retention, recurring giving, major-donor pipeline and goals." actions={<div className="w-56"><WorkspaceSelect value={ministry} onChange={setMinistry} /></div>} />
-    {!data ? <Spinner /> : <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{(() => { const y = data.years[0] ?? {}; const p = data.years[1] ?? {}; return <>
-        <Metric label="Giving this year" value={money(y.total ?? 0)} sub={p.total ? `${money(p.total)} last year` : undefined} tone="brand" to="/donors/giving/reports" />
-        <Metric label="New donors" value={num(y.new_donors ?? 0)} sub={`${p.new_donors ?? 0} last year`} to="/donors/giving/donors?sort=created_at" />
-        <Metric label="Retention" value={y.retention_rate != null ? pct(y.retention_rate) : '—'} tone={y.retention_rate < 45 ? 'warn' : 'good'} to="/donors/giving/audit" />
-        <Metric label="Major donors" value={num(y.major_donors ?? 0)} to="/donors/giving/donors?min_lifetime=5000" />
-        <Metric label="Avg / donor" value={money(y.avg_gift_per_donor ?? 0)} /></>; })()}</div>
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card title="Goals" className="xl:col-span-1" actions={can('settings.manage') && <Button size="sm" onClick={() => setGoal(true)}>Add goal</Button>}>
-          {!data.goals.length ? <p className="text-sm text-slate-500">No goals set.</p> : <div className="space-y-4">{data.goals.map((g: any) => <div key={g.id}><div className="flex justify-between text-sm"><span className="font-medium">{g.name}</span><span>{g.metric === 'giving_total' ? money(g.actual) : g.metric === 'retention_rate' ? pct(g.actual) : num(g.actual)} / {g.metric === 'giving_total' ? money(g.target) : num(g.target)}</span></div><Progress value={g.pct ?? 0} tone={(g.pct ?? 0) >= 100 ? 'good' : 'brand'} /><div className="text-xs text-slate-500">{date(g.period_start)} – {date(g.period_end)} · {g.pct ?? 0}%</div></div>)}</div>}
-        </Card>
-        <Card title="Donors & retention by year" className="xl:col-span-2"><div className="h-64"><ResponsiveContainer><BarChart data={[...data.years].reverse()}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="yr" /><YAxis /><Tooltip /><Legend /><Bar dataKey="donors" fill="#6366f1" name="Donors" /><Bar dataKey="new_donors" fill="#10b981" name="New" /><Bar dataKey="retained" fill="#f59e0b" name="Retained" /></BarChart></ResponsiveContainer></div></Card>
-        <Card title="Recommended priorities" subtitle={data.recommendationsNote}>{data.recommendations.length ? <ul className="list-disc space-y-1.5 pl-5 text-sm">{data.recommendations.map((r: string) => <li key={r}>{r}</li>)}</ul> : <p className="text-sm text-slate-500">You're on track.</p>}<Link to="/donors/giving/priorities" className="mt-3 inline-block text-sm text-brand-600 hover:underline">Open fundraising priorities →</Link></Card>
-        <Card title="Major-donor & opportunity pipeline" padded={false}><Table rowKey="category" rows={data.pipeline} cols={[{ key: 'category', label: 'Stage / category' }, { key: 'donors', label: 'Donors', align: 'right' }, { key: 'potential', label: 'Potential (est.)', align: 'right', render: (r) => money(r.potential) }]} /></Card>
-        <Card title="Acquisition sources (12 months)" padded={false}><Table rowKey="source" rows={data.acquisition} cols={[{ key: 'source', label: 'Source' }, { key: 'donors', label: 'New donors', align: 'right' }]} empty="No new donors in 12 months." /></Card>
-        <Card title="Recurring giving starts" className="xl:col-span-2"><div className="h-48"><ResponsiveContainer><BarChart data={data.recurringTrend}><XAxis dataKey="month" tick={{ fontSize: 11 }} /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="started" fill="#0ea5e9" name="New recurring gifts" /></BarChart></ResponsiveContainer></div></Card>
-        <Card title="Donor health"><div className="space-y-2">{data.health.map((h: any) => <Link key={h.health_status} to={`/donors/giving/donors?health=${h.health_status}`} className="flex items-center justify-between"><Chip value={h.health_status} /><span className="text-sm">{num(h.n)}</span></Link>)}</div></Card>
-      </div>
-    </div>}
-    <RecordModal open={goal} onClose={() => setGoal(false)} resource="growth_goals" title="Goal" onSaved={() => window.location.reload()} fields={[{ key: 'name', label: 'Goal', required: true, span: 2 }, { key: 'metric', label: 'Metric', type: 'select', required: true, options: ['giving_total', 'new_donors', 'retention_rate', 'recurring_donors', 'major_donors'] }, { key: 'target', label: 'Target', type: 'number', required: true }, { key: 'period_start', label: 'Start', type: 'date', required: true }, { key: 'period_end', label: 'End', type: 'date', required: true }, { key: 'ministry_id', label: 'Workspace', type: 'workspace' }]} />
+    <PageHeader title="Growth" subtitle="How your donor base is growing: new donors, donors who give again, upgrades, monthly giving, major gifts and goals." />
+    <GrowthOverview />
   </>;
 }
 
