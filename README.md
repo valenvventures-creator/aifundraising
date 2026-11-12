@@ -1,4 +1,4 @@
-# A.I. Fundraising — by Thought Authorities
+# A.I. Fundraising
 
 A multi-tenant nonprofit operating system: donor CRM and fundraising intelligence, giving and receipts, true fund accounting, grants, projects, events, email (“A.I. Fundraising Reach”), work and time, growth, impact, internal messages, admin/RBAC, and the permission-aware **Ask A.I. Fundraising** question portal.
 
