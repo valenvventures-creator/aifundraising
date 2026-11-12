@@ -3,18 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Upload, Download, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { api, useApi, download } from '../lib/api';
 import { useSession } from '../lib/session';
+import { SettingsOverview } from './AdminHub';
 import { Button, Card, PageHeader, Spinner, Field, Input, Select, Textarea, Table, Chip, Notice, Checkbox, useAction, useToast, StateTabs, SaveState, cx } from '../components/ui';
 import { AuditLog } from './Platform';
 import { date, dateTime, label, ago } from '../lib/format';
 
-type Tab = 'organization' | 'receipts' | 'fundraising' | 'google' | 'notifications' | 'automations' | 'team' | 'data' | 'audit';
+type Tab = 'overview' | 'organization' | 'receipts' | 'fundraising' | 'google' | 'notifications' | 'automations' | 'team' | 'data' | 'audit';
 export function Settings() {
-  const [sp, setSp] = useSearchParams(); const tab = (sp.get('tab') ?? 'organization') as Tab;
+  const [sp, setSp] = useSearchParams(); const tab = (sp.get('tab') ?? 'overview') as Tab;
   const { can } = useSession();
-  const tabs: { value: Tab; label: string }[] = [{ value: 'organization', label: 'Organization' }, { value: 'receipts', label: 'Receipts & tax' }, { value: 'fundraising', label: 'Fundraising rules' }, { value: 'google', label: 'Gmail & Calendar' },
+  const tabs: { value: Tab; label: string }[] = [{ value: 'overview', label: 'Overview' }, { value: 'organization', label: 'Organization' }, { value: 'receipts', label: 'Receipts & tax' }, { value: 'fundraising', label: 'Fundraising rules' }, { value: 'google', label: 'Gmail & Calendar' },
     { value: 'notifications', label: 'Notifications' }, { value: 'automations', label: 'Automations' }, { value: 'team', label: 'Team access' }, ...(can('data.import') || can('data.export') ? [{ value: 'data' as Tab, label: 'Account & Data' }] : []), ...(can('audit.read') ? [{ value: 'audit' as Tab, label: 'Activity history' }] : [])];
   return <>
     <PageHeader title="Settings"><div className="mt-4"><StateTabs value={tab} onChange={(v) => setSp({ tab: v })} tabs={tabs} /></div></PageHeader>
+    {tab === 'overview' && <SettingsOverview onTab={(t) => setSp({ tab: t })} />}
     {tab === 'organization' && <OrgSettings />}{tab === 'receipts' && <ReceiptSettings />}{tab === 'fundraising' && <FundraisingRules />}{tab === 'google' && <GoogleSettings />}
     {tab === 'notifications' && <NotificationSettings />}{tab === 'automations' && <Automations />}{tab === 'team' && <TeamAccess />}{tab === 'data' && <DataSettings />}{tab === 'audit' && <AuditLog />}
   </>;

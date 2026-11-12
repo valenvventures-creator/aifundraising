@@ -11,7 +11,7 @@ import { Files } from './DonorProfile';
 import { money, money2, num, date, dateTime, label, today, addDays } from '../lib/format';
 
 export function WorkShell() {
-  return <><PageHeader title="Work" subtitle="Tasks, client work, calendar, communications and time — in one place."><PillTabs className="mt-4" tabs={[{ to: '/work/tasks', label: 'Tasks' }, { to: '/work/client-work', label: 'Client Work' }, { to: '/work/calendar', label: 'Calendar' }, { to: '/work/communications', label: 'Communications' }, { to: '/work/time', label: 'Time Log' }]} /></PageHeader><Outlet /></>;
+  return <><PageHeader title="Work" subtitle="Tasks, client work, calendar, communications and time — in one place."><PillTabs className="mt-4" tabs={[{ to: '/work/overview', label: 'Overview' }, { to: '/work/tasks', label: 'Tasks' }, { to: '/work/client-work', label: 'Client Work' }, { to: '/work/calendar', label: 'Calendar' }, { to: '/work/communications', label: 'Communications' }, { to: '/work/time', label: 'Time Log' }]} /></PageHeader><Outlet /></>;
 }
 
 export function Tasks() {

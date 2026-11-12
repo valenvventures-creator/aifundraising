@@ -18,6 +18,7 @@ import { WorkShell, Tasks, ClientWork, CalendarPage, Communications, TimeLog } f
 import { Growth, Impact, Messages, Admin, Ask } from './pages/Platform';
 import { Settings } from './pages/Settings';
 import { Landing } from './pages/Landing';
+import { WorkOverview } from './pages/WorkHub';
 import { GrantApplicationEditor } from './pages/GrantFinder';
 
 function Guard({ perm, children }: { perm: string | string[]; children: React.ReactNode }) {
@@ -116,7 +117,8 @@ function AuthedApp() {
           <Route path="updates" element={<Guard perm="reports.read"><Updates /></Guard>} />
         </Route>
         <Route path="work" element={<Guard perm="work.read"><WorkShell /></Guard>}>
-          <Route index element={<Navigate to="tasks" replace />} />
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<WorkOverview />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="client-work" element={<ClientWork />} />
           <Route path="calendar" element={<CalendarPage />} />

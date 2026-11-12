@@ -5,6 +5,7 @@ import { Plus, Trash2, Camera, Upload, ArrowRightLeft, RefreshCw, FileText, Spar
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { api, useApi, qs, download } from '../lib/api';
 import { useSession } from '../lib/session';
+import { MoneyOverview } from './MoneyHub';
 import { Button, Card, Metric, PageHeader, PillTabs, Spinner, ErrorBox, Field, Input, Select, Textarea, Table, Pager, Chip, Empty, Notice, Modal, Checkbox, useAction, useToast, StateTabs, SearchInput, AiBadge, Progress, cx } from '../components/ui';
 import { ResourcePage } from '../components/ResourcePage';
 import { FundSelect, AccountSelect, GiftModal, useAccounts, useFunds, useProjects, WorkspaceSelect, useRateTypes, invalidate } from '../components/domain';
@@ -24,26 +25,7 @@ export function AccountingShell() {
 }
 
 // ───────── Overview ─────────
-export function AccountingOverview() {
-  const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`); const [to, setTo] = useState(today());
-  const { data: d, error, reload } = useApi<any>(`/money/overview?from=${from}&to=${to}`);
-  if (error) return <ErrorBox error={error} onRetry={reload} />;
-  if (!d) return <Spinner />;
-  return <div className="space-y-5">
-    <div className="flex flex-wrap items-end gap-2"><Field label="From"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field><Field label="To"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field></div>
-    {d.alerts.length > 0 && <div className="space-y-2">{d.alerts.map((a: any, i: number) => <Link key={i} to={a.link} className={cx('block rounded-xl border px-4 py-2.5 text-sm', a.level === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-amber-200 bg-amber-50 text-amber-800')}>{a.text}</Link>)}</div>}
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-      <Metric label="Income" value={money(d.income)} tone="good" to={`/money/reports?kind=activities&from=${from}&to=${to}`} /><Metric label="Expenses" value={money(d.expenses)} to={`/money/reports?kind=activities&from=${from}&to=${to}`} />
-      <Metric label="Change in net assets" value={money(d.change)} tone={d.change >= 0 ? 'good' : 'bad'} to={`/money/reports?kind=activities&from=${from}&to=${to}`} />
-      <Metric label="Cash" value={money(d.cash)} to="/money/reports?kind=financial-position" /><Metric label="Unrestricted" value={money(d.unrestrictedTotal)} tone={d.unrestrictedTotal < 0 ? 'bad' : 'default'} to="/money/accounting/funds" /><Metric label="Restricted" value={money(d.restrictedTotal)} to="/money/accounting/funds" />
-    </div>
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-      <Card title="Income vs. expenses — 12 months" className="xl:col-span-2"><div className="h-64"><ResponsiveContainer><BarChart data={d.monthly}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11 }} /><YAxis tickFormatter={(v) => money(v)} width={70} tick={{ fontSize: 11 }} /><Tooltip formatter={(v: any) => money(v)} /><Legend /><Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="expenses" fill="#6366f1" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div></Card>
-      <Card title="Fund balances" padded={false}><Table rows={d.funds} onRowClick={undefined} cols={[{ key: 'name', label: 'Fund', render: (f) => <Link to={`/money/accounting/funds/${f.id}`} className="hover:underline">{f.name}</Link> }, { key: 'restriction', label: '', render: (f) => <Chip value={f.restriction} /> }, { key: 'balance', label: 'Balance', align: 'right', render: (f) => <span className={f.balance < 0 ? 'text-red-600' : ''}>{money(f.balance)}</span> }]} /></Card>
-    </div>
-    <Card title="Recent activity" padded={false} actions={<Link to="/money/accounting/transactions" className="text-xs text-brand-600 hover:underline">All transactions</Link>}><Table rows={d.recent} cols={[{ key: 'entry_date', label: 'Date', render: (e) => date(e.entry_date) }, { key: 'memo', label: 'Description' }, { key: 'source', label: 'Source', render: (e) => <Chip>{e.source}</Chip> }, { key: 'status', label: 'Status', render: (e) => <Chip value={e.status} /> }, { key: 'amount', label: 'Amount', align: 'right', render: (e) => money2(e.amount) }]} /></Card>
-  </div>;
-}
+export function AccountingOverview() { return <MoneyOverview />; }
 
 // ───────── Transactions & Journals ─────────
 export function Transactions({ journalsMode }: { journalsMode?: boolean }) {

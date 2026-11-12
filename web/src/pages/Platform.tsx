@@ -2,6 +2,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ImpactOverview } from './ImpactHub';
+import { MessagesHome } from './MessagesHub';
+import { AdminOverview, SettingsOverview, AskSidebar } from './AdminHub';
 import { Send, Sparkles, Plus, Database, UserPlus, Copy, ShieldCheck } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { api, useApi } from '../lib/api';
@@ -69,11 +71,21 @@ export function Messages() {
   const active = convs.data?.find((c) => c.id === id);
   return <>
     <PageHeader title="Messages" subtitle="Internal team collaboration — separate from donor email." actions={<Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setNewOpen(true)}>New Message</Button>} />
-    <div className="grid h-[calc(100vh-220px)] min-h-[480px] grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid-cols-[300px_1fr]">
-      <div className={cx('overflow-y-auto border-r border-slate-100', id && 'hidden md:block')}>{!convs.data ? <Spinner /> : convs.data.map((c) => <button key={c.id} onClick={() => nav(`/messages/${c.id}`)} className={cx('block w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50', c.id === id && 'bg-brand-50')}>
-        <div className="flex items-center justify-between gap-2"><span className={cx('truncate text-sm', c.unread ? 'font-bold' : 'font-medium')}>{c.is_channel ? '# ' : ''}{c.name ?? c.members}</span>{c.unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[10px] font-bold text-white">{c.unread}</span>}</div>
-        <div className="truncate text-xs text-slate-500">{c.last_message}</div><div className="flex justify-between text-[11px] text-slate-400"><span>{c.ministry_name ?? ''}{c.status === 'closed' ? ' · closed' : ''}</span><span>{ago(c.last_at)}</span></div></button>)}</div>
-      <div className={cx('flex min-h-0 flex-col', !id && 'hidden md:flex')}>{active ? <Thread conv={active} onChange={convs.reload} /> : <div className="flex flex-1 items-center justify-center text-sm text-slate-500">Select a conversation</div>}</div>
+    {!id && <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white md:hidden"><MessagesHome onNew={() => setNewOpen(true)} /></div>}
+    <div className="grid h-[calc(100vh-220px)] min-h-[480px] grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid-cols-[320px_1fr]">
+      <div className={cx('overflow-y-auto border-r border-slate-100', id && 'hidden md:block')}>{!convs.data ? <Spinner /> : (!convs.data.length ? <div className="p-6 text-center text-sm text-slate-500">No conversations yet.</div> : convs.data.map((c) => {
+        const title = `${c.is_channel ? '# ' : ''}${c.name ?? c.members ?? 'Conversation'}`;
+        const initials = String(c.name ?? c.members ?? '?').replace('#', '').split(/[ ,]+/).filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+        return <button key={c.id} onClick={() => nav(`/messages/${c.id}`)} className={cx('flex w-full items-start gap-3 border-b border-slate-50 px-4 py-3 text-left transition hover:bg-slate-50', c.id === id && 'bg-brand-50')}>
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-[11px] font-bold text-white">{initials}{c.ministry_color && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white" style={{ background: c.ministry_color }} />}</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2"><span className={cx('truncate text-sm', c.unread ? 'font-bold text-slate-900' : 'font-medium text-slate-700')}>{title}</span><span className="shrink-0 text-[11px] text-slate-400">{ago(c.last_at)}</span></span>
+            <span className="mt-0.5 flex items-center justify-between gap-2"><span className={cx('truncate text-xs', c.unread ? 'text-slate-700' : 'text-slate-500')}>{c.last_message ?? 'No messages yet'}</span>{c.unread > 0 && <span className="shrink-0 rounded-full bg-brand-600 px-1.5 text-[10px] font-bold text-white">{c.unread}</span>}</span>
+            {(c.ministry_name || c.status === 'closed') && <span className="mt-0.5 block text-[11px] text-slate-400">{c.ministry_name ?? ''}{c.status === 'closed' ? ' · closed' : ''}</span>}
+          </span>
+        </button>;
+      }))}</div>
+      <div className={cx('flex min-h-0 flex-col', !id && 'hidden md:flex')}>{active ? <Thread conv={active} onChange={convs.reload} /> : <MessagesHome onNew={() => setNewOpen(true)} />}</div>
     </div>
     {newOpen && <NewMessage onClose={() => setNewOpen(false)} onCreated={(c) => { convs.reload(); nav(`/messages/${c.id}`); }} />}
   </>;
@@ -102,13 +114,14 @@ function NewMessage({ onClose, onCreated }: { onClose: () => void; onCreated: (c
 // ───────── Admin & Access ─────────
 export function Admin() {
   const { can, workspaces, terms } = useSession();
-  const [tab, setTab] = useState<'users' | 'roles' | 'audit'>(can('admin.users') ? 'users' : 'audit');
+  const [tab, setTab] = useState<'overview' | 'users' | 'roles' | 'audit'>('overview');
   const users = useApi<any[]>(can('admin.users') ? '/admin/users' : null); const roles = useApi<any>(can('admin.users') ? '/admin/roles' : null);
   const [invite, setInvite] = useState(false); const [edit, setEdit] = useState<any>(null); const [role, setRole] = useState<any>(null);
   const { run } = useAction();
   return <>
     <PageHeader title="Admin & Access" subtitle="Users, seats, roles, workspace access, fine-grained permissions and the audit log." actions={can('admin.users') && tab === 'users' && <Button variant="primary" icon={<UserPlus className="h-4 w-4" />} onClick={() => setInvite(true)}>Invite user</Button>}>
-      <div className="mt-4"><StateTabs value={tab} onChange={setTab} tabs={[...(can('admin.users') ? [{ value: 'users' as const, label: 'Users' }, { value: 'roles' as const, label: 'Roles & permissions' }] : []), ...(can('audit.read') ? [{ value: 'audit' as const, label: 'Audit log' }] : [])]} /></div></PageHeader>
+      <div className="mt-4"><StateTabs value={tab} onChange={setTab} tabs={[{ value: 'overview' as const, label: 'Overview' }, ...(can('admin.users') ? [{ value: 'users' as const, label: 'Users' }, { value: 'roles' as const, label: 'Roles & permissions' }] : []), ...(can('audit.read') ? [{ value: 'audit' as const, label: 'Audit log' }] : [])]} /></div></PageHeader>
+    {tab === 'overview' && <AdminOverview onTab={(t) => setTab(t as any)} />}
     {tab === 'users' && <Card padded={false}><Table rowKey="membership_id" rows={users.data ?? []} onRowClick={(u) => setEdit(u)} cols={[{ key: 'name', label: 'User', render: (u) => <div><div className="font-medium">{u.name ?? u.invited_email}</div><div className="text-xs text-slate-500">{u.email ?? 'Invitation pending'}</div></div> }, { key: 'role_name', label: 'Role' },
       { key: 'access', label: `${terms} access`, render: (u) => (u.all_ministries ? 'All' : u.ministry_ids.map((id: string) => workspaces.find((w) => w.id === id)?.name).filter(Boolean).join(', ') || 'None') }, { key: 'status', label: 'Status', render: (u) => <Chip value={u.status} /> }, { key: 'seat', label: 'Seat', render: (u) => (u.seat ? 'Yes' : 'No') }, { key: 'last_login', label: 'Last sign-in', render: (u) => ago(u.last_login) }]} /></Card>}
     {tab === 'roles' && roles.data && <Card padded={false} actions={<Button size="sm" onClick={() => setRole({ name: '', permissions: [] })}>Custom role</Button>} title="Roles"><Table rows={roles.data.roles} onRowClick={(r) => setRole(r)} cols={[{ key: 'name', label: 'Role', render: (r) => <span className="font-medium">{r.name}{r.is_system && <Chip className="ml-2">system</Chip>}</span> }, { key: 'description', label: 'Description' }, { key: 'permissions', label: 'Permissions', render: (r) => `${r.permissions.length}` }, { key: 'members', label: 'Members', align: 'right' }]} /></Card>}
@@ -168,7 +181,7 @@ export function Ask() {
   };
   return <>
     <PageHeader title={<span className="flex items-center gap-2"><Sparkles className="h-6 w-6 text-violet-600" />Ask A.I. Fundraising</span>} subtitle="Ask questions about the information you're authorized to see. Answers cite the records behind them. Ask can analyze, explain and recommend — it cannot send, post, edit or move anything." />
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
       <Card padded={false} className="flex min-h-[560px] flex-col">
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {!msgs.length && <div><p className="mb-3 text-sm text-slate-600">Try one of these:</p><div className="flex flex-wrap gap-2">{EXAMPLES.map((e) => <button key={e} onClick={() => ask(e)} className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm text-violet-800 hover:bg-violet-100">{e}</button>)}</div>
@@ -182,8 +195,9 @@ export function Ask() {
         </div>
         <form className="flex gap-2 border-t border-slate-100 p-3" onSubmit={(e) => { e.preventDefault(); ask(q); }}><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask about donors, giving, funds, grants, tasks…" /><Button variant="primary" loading={busy} icon={<Send className="h-4 w-4" />}>Ask</Button></form>
       </Card>
+      <div className="space-y-5"><AskSidebar onAsk={ask} />
       <Card title="Your recent questions" padded={false}>{!history.data?.length ? <p className="p-4 text-sm text-slate-500">No questions yet.</p> : <ul className="divide-y divide-slate-50">{history.data.slice(0, 20).map((h) => <li key={h.id}><button className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50" onClick={() => setMsgs([{ role: 'user', content: h.question }, { role: 'assistant', content: h.answer, citations: h.citations, engine: h.engine }])}>{h.question}<span className="block text-[11px] text-slate-400">{ago(h.created_at)}</span></button></li>)}</ul>}
-        <div className="border-t border-slate-100 p-4 text-xs text-slate-500"><ShieldCheck className="mr-1 inline h-3.5 w-3.5" />Answers only use data your role can access. Drafts and recommendations are never applied automatically.</div></Card>
+        <div className="border-t border-slate-100 p-4 text-xs text-slate-500"><ShieldCheck className="mr-1 inline h-3.5 w-3.5" />Answers only use data your role can access. Drafts and recommendations are never applied automatically.</div></Card></div>
     </div>
   </>;
 }

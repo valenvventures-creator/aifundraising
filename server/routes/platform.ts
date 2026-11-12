@@ -82,10 +82,11 @@ platformRouter.get('/dashboard', h(async (req, res) => {
       r.recurring = await one(db, `SELECT coalesce(sum(CASE frequency WHEN 'monthly' THEN amount WHEN 'quarterly' THEN amount/3 WHEN 'annually' THEN amount/12 WHEN 'weekly' THEN amount*52/12 END),0)::float monthly, count(*)::int n
         FROM recurring_gifts r JOIN donors d ON d.id=r.donor_id WHERE r.status='active' AND ($1::uuid IS NULL OR d.ministry_id=$1) AND ${sc2}`, p2);
       r.monthly = await many(db, `SELECT to_char(gift_date,'YYYY-MM') AS month, sum(amount)::float total FROM gifts g WHERE NOT refunded AND gift_date > current_date - interval '12 months' AND ($1::uuid IS NULL OR g.ministry_id=$1) AND ${sc} GROUP BY 1 ORDER BY 1`, p);
-      r.campaigns = await many(db, `SELECT c.id, c.name, c.goal::float, coalesce(sum(g.amount),0)::float raised FROM campaigns c LEFT JOIN gifts g ON g.campaign_id=c.id AND NOT g.refunded WHERE c.status='active' AND ($1::uuid IS NULL OR c.ministry_id=$1) GROUP BY c.id ORDER BY raised DESC LIMIT 5`, [ministry]);
+      r.campaigns = await many(db, `SELECT c.id, c.name, c.goal::float, c.ends_on, coalesce(sum(g.amount),0)::float raised, count(DISTINCT g.donor_id)::int donors,
+        coalesce(sum(g.amount) FILTER (WHERE g.gift_date > current_date - 30),0)::float raised_30 FROM campaigns c LEFT JOIN gifts g ON g.campaign_id=c.id AND NOT g.refunded WHERE c.status='active' AND ($1::uuid IS NULL OR c.ministry_id=$1) GROUP BY c.id ORDER BY raised DESC LIMIT 5`, [ministry]);
     }
     if (can(a, 'finance.read')) {
-      const funds = await fundSummaries(db);
+      const funds = await fundSummaries(db, `${new Date().getUTCFullYear()}-01-01`, new Date().toISOString().slice(0, 10));
       r.finance = { restricted: round2(funds.filter((f) => f.restriction !== 'unrestricted').reduce((s, f) => s + f.balance, 0)), unrestricted: round2(funds.filter((f) => f.restriction === 'unrestricted').reduce((s, f) => s + f.balance, 0)),
         funds: funds.slice(0, 8), ...(await one(db, `SELECT coalesce(sum(jl.debit-jl.credit) FILTER (WHERE a.type='expense'),0)::float expenses_ytd FROM journal_lines jl JOIN journal_entries je ON je.id=jl.entry_id AND je.status='posted' JOIN accounts a ON a.id=jl.account_id WHERE je.entry_date >= date_trunc('year',current_date)`)) };
       r.budgetAlerts = await many(db, `SELECT b.id, b.name, a.name account, bl.amount::float budget, coalesce((SELECT sum(jl.debit-jl.credit) FROM journal_lines jl JOIN journal_entries je ON je.id=jl.entry_id AND je.status='posted' WHERE jl.account_id=bl.account_id AND (bl.fund_id IS NULL OR jl.fund_id=bl.fund_id) AND je.entry_date BETWEEN b.period_start AND b.period_end),0)::float actual
@@ -97,9 +98,11 @@ platformRouter.get('/dashboard', h(async (req, res) => {
         count(*) FILTER (WHERE assignee_id=$1)::int mine FROM tasks t WHERE status<>'completed' AND ($2::uuid IS NULL OR t.ministry_id=$2) AND ${sc}`, p);
       r.myTasks = await many(db, `SELECT t.id, t.title, t.due_date, t.status, t.progress FROM tasks t WHERE t.assignee_id=$1 AND t.status<>'completed' AND ($2::uuid IS NULL OR t.ministry_id=$2) AND ${sc} ORDER BY t.due_date NULLS LAST LIMIT 8`, p);
     }
-    if (can(a, 'grants.read')) r.grants = await many(db, `SELECT id, title, status, deadline, report_due, request_amount::float, awarded_amount::float FROM grants WHERE status NOT IN ('declined','closed') AND ($1::uuid IS NULL OR ministry_id=$1) ORDER BY least(deadline, report_due) NULLS LAST LIMIT 6`, [ministry]);
+    if (can(a, 'grants.read')) r.grants = await many(db, `SELECT g.id, g.title, g.status, g.deadline, g.report_due, g.request_amount::float, g.awarded_amount::float, f.name funder FROM grants g LEFT JOIN funders f ON f.id=g.funder_id WHERE g.status NOT IN ('declined','closed') AND ($1::uuid IS NULL OR g.ministry_id=$1) ORDER BY least(g.deadline, g.report_due) NULLS LAST LIMIT 6`, [ministry]);
     if (can(a, 'grants.read')) r.grantTotals = await one(db, `SELECT coalesce(sum(request_amount) FILTER (WHERE status IN ('submitted','under_review')),0)::float pending, coalesce(sum(awarded_amount) FILTER (WHERE status IN ('awarded','reporting','closed') AND decision_on >= date_trunc('year',current_date)),0)::float awarded_ytd FROM grants WHERE ($1::uuid IS NULL OR ministry_id=$1)`, [ministry]);
-    if (can(a, 'events.read')) r.events = await many(db, `SELECT e.id, e.name, e.starts_at, (SELECT count(*) FROM registrations r WHERE r.event_id=e.id AND r.status<>'cancelled')::int registered FROM events e WHERE starts_at >= now() AND ($1::uuid IS NULL OR ministry_id=$1) ORDER BY starts_at LIMIT 5`, [ministry]);
+    if (can(a, 'events.read')) r.events = await many(db, `SELECT e.id, e.name, e.starts_at, e.capacity, e.location, e.event_type, (SELECT count(*) FROM registrations r WHERE r.event_id=e.id AND r.status<>'cancelled')::int registered,
+      (SELECT coalesce(sum(1+r.guests),0) FROM registrations r WHERE r.event_id=e.id AND r.status<>'cancelled')::int people,
+      (SELECT coalesce(sum(g.amount),0) FROM gifts g WHERE e.campaign_id IS NOT NULL AND g.campaign_id=e.campaign_id AND NOT g.refunded)::float raised FROM events e WHERE starts_at >= now() AND ($1::uuid IS NULL OR ministry_id=$1) ORDER BY starts_at LIMIT 5`, [ministry]);
     if (can(a, 'impact.read')) r.impact = await many(db, `SELECT m.id, m.name, m.unit, m.target::float, (SELECT coalesce(sum(value),0) FROM impact_entries e WHERE e.metric_id=m.id AND (m.period_start IS NULL OR e.entry_date >= m.period_start) AND (m.period_end IS NULL OR e.entry_date <= m.period_end))::float actual FROM impact_metrics m WHERE ($1::uuid IS NULL OR m.ministry_id=$1) ORDER BY m.created_at DESC LIMIT 4`, [ministry]);
     if (can(a, 'email.read')) r.email = await one(db, `SELECT count(*) FILTER (WHERE status='sent' AND sent_at > now() - interval '30 days')::int sent_30, count(*) FILTER (WHERE status='scheduled')::int scheduled FROM email_campaigns`);
     const t = await one(db, `SELECT onboarding, workspace_term, workspace_term_plural FROM tenants WHERE id=$1`, [a.tenantId]);
@@ -202,7 +205,7 @@ platformRouter.get('/notifications/preferences', h(async (req, res) => {
 platformRouter.get('/conversations', h(async (req, res) => {
   requirePerm(req.auth, 'messages.use');
   const p: unknown[] = [req.auth!.userId]; const sc = ministryScope(req.auth!, 'c.ministry_id', p);
-  res.json(await tx(req, (db) => many(db, `SELECT c.*, m.name ministry_name,
+  res.json(await tx(req, (db) => many(db, `SELECT c.*, m.name ministry_name, m.color ministry_color,
       (SELECT body FROM messages x WHERE x.conversation_id=c.id ORDER BY created_at DESC LIMIT 1) last_message,
       (SELECT max(created_at) FROM messages x WHERE x.conversation_id=c.id) last_at,
       (SELECT count(*) FROM messages x WHERE x.conversation_id=c.id AND x.created_at > coalesce(cm.last_read_at,'epoch') AND x.user_id<>$1)::int unread,

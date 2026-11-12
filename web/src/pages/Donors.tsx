@@ -6,6 +6,7 @@ import { api, useApi, qs, download, downloadPost } from '../lib/api';
 import { useSession } from '../lib/session';
 import { Button, Card, Metric, PageHeader, PillTabs, Spinner, ErrorBox, Modal, Field, Input, Select, Textarea, Table, Pager, SearchInput, Chip, Empty, Notice, useAction, useToast, cx, Checkbox } from '../components/ui';
 import { DonorModal, GiftModal, TaskModal, DraftModal, ContactModal, HealthChip, ScoreBadge, FundSelect, DonorPicker, WorkspaceSelect, TeamSelect, useCampaigns, GIFT_TYPES, PAYMENT_METHODS, DONOR_TYPES, donorTypeLabel } from '../components/domain';
+import { DonorsInsights } from './DonorsHub';
 import { money, num, date, label, today } from '../lib/format';
 
 const HEALTH_COLORS: Record<string, string> = { active: '#10b981', engaged: '#0ea5e9', cooling: '#f59e0b', lapsing: '#f97316', lapsed: '#ef4444' };
@@ -56,10 +57,13 @@ export function GivingShell() {
   );
 }
 
-export function GivingOverviewRoute() { const [sp] = useSearchParams(); return <DonorsOverview ministryId={sp.get('ministry_id') ?? undefined} />; }
+export function GivingOverviewRoute() { const [sp] = useSearchParams(); return <DonorsOverview ministryId={sp.get('ministry_id') ?? ''} />; }
 
 /** Today's Fundraising Moves + donor health + thank-you/receipt queues. */
 export function DonorsOverview({ ministryId }: { ministryId?: string }) {
+  return <DonorsInsights ministryId={ministryId}>{(m) => <DonorActions ministryId={m || undefined} />}</DonorsInsights>;
+}
+function DonorActions({ ministryId }: { ministryId?: string }) {
   const { data, loading, error, reload } = useApi<any>(`/donors/intel/overview${qs({ ministry_id: ministryId, moves: 12 })}`);
   React.useEffect(() => { const f = () => reload(); window.addEventListener('ainp:refresh', f); return () => window.removeEventListener('ainp:refresh', f); }, [reload]);
   const nav = useNavigate();
@@ -68,14 +72,8 @@ export function DonorsOverview({ ministryId }: { ministryId?: string }) {
   const k = data.kpis;
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Metric label="Donors" value={num(k.donors)} to="/donors/giving/donors" />
-        <Metric label="Giving YTD" value={money(k.giving_ytd)} tone="brand" to="/donors/giving/reports" />
-        <Metric label="This month" value={money(k.giving_mtd)} to="/donors/giving/reports" />
-        <Metric label="Lifetime" value={money(k.lifetime)} to="/donors/giving/reports" />
-        <Metric label="Monthly recurring" value={money(k.recurringMonthly)} sub={`${k.recurringDonors} donors`} to="/donors/giving/donors?recurring=true" />
-        <Metric label="Opportunity (est.)" value={money(k.opportunity)} tone="good" to="/donors/giving/priorities" />
-      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2"><h3 className="text-lg font-semibold text-slate-900">What to do next</h3>
+        <Link to="/donors/giving/priorities" className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">Opportunity in your donor base (estimate): {money(k.opportunity)}</Link></div>
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card title="Today's Fundraising Moves" subtitle="Ranked by priority and estimated opportunity. Suggestions, not certainties." className="xl:col-span-2" padded={false}
           actions={<Link to="/donors/giving/priorities/calls" className="text-xs text-brand-600 hover:underline">Call lists</Link>}>
