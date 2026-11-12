@@ -34,6 +34,8 @@ The functions use Netlify's modern format (`export default` with a `config` rout
 2. **Netlify Database is set up automatically on deploy**, because the project depends on `@netlify/database` and has a migration in `netlify/database/migrations/` (the same convention as the other sites). If no database appears, create one in Netlify under **Data & Storage → Database** and redeploy. Netlify then provides `NETLIFY_DB_URL`, and the app creates the rest of its tables on first use. Netlify Database requires a credit-based Netlify plan.
 3. **Deploy.** Every build runs the test suite first, and a failing test stops the deploy.
 
+> **Never edit a file in `netlify/database/migrations/` after it has been deployed**, even a comment. Netlify records each applied file and stops the deploy if one changes. Add a new migration folder instead. (The app's own tables live in `server/db/migrations/`.)
+
 You don't need to set any variables to get started. Open the site and choose **Create your organization**.
 
 **Optional environment variables** (*Site configuration → Environment variables*):
