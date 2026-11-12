@@ -19,6 +19,7 @@ import { Growth, Impact, Messages, Admin, Ask } from './pages/Platform';
 import { Settings } from './pages/Settings';
 import { Landing } from './pages/Landing';
 import { TermsPage, PrivacyPage } from './pages/Legal';
+import { QuickBooksLaunch, QuickBooksConnect, QuickBooksDisconnected } from './pages/QuickBooksPages';
 import { WorkOverview } from './pages/WorkHub';
 import { GrantApplicationEditor } from './pages/GrantFinder';
 
@@ -38,6 +39,7 @@ function AuthedApp() {
   const loc = useLocation();
   if (loc.pathname === '/terms') return <TermsPage />;
   if (loc.pathname === '/privacy') return <PrivacyPage />;
+  if (loc.pathname === '/quickbooks/disconnected') return <QuickBooksDisconnected />;
   if (loc.pathname.startsWith('/e/')) return <Routes><Route path="/e/:slug" element={<PublicEvent />} /></Routes>;
   if (loc.pathname.startsWith('/invite/')) return <Routes><Route path="/invite/:token" element={<AcceptInvite />} /></Routes>;
   if (loc.pathname.startsWith('/reset-password/')) return <Routes><Route path="/reset-password/:token" element={<ResetPassword />} /></Routes>;
@@ -47,6 +49,8 @@ function AuthedApp() {
   if (!me.tenant) return <div className="mx-auto max-w-xl p-8"><NewOrganization /></div>;
   return (
     <Routes>
+      <Route path="quickbooks/launch" element={<QuickBooksLaunch />} />
+      <Route path="quickbooks/connect" element={<QuickBooksConnect />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="workspaces/:id" element={<WorkspaceHome />} />

@@ -79,6 +79,7 @@ integrationsRouter.post('/:provider/disconnect', h(async (req, res) => {
   await tx(req, async (db) => {
     const i = await getIntegration(db, p, p === 'google' ? req.auth!.userId : null); if (!i) throw notFound('Integration');
     if (p === 'google') { const s = decryptJson<any>(i.secrets_enc); if (s?.refresh_token) await fetch(`https://oauth2.googleapis.com/revoke?token=${s.refresh_token}`, { method: 'POST' }).catch(() => {}); }
+    if (p === 'quickbooks') { const s = decryptJson<any>(i.secrets_enc); if (s?.refresh_token) await (await import('../services/integrations.js')).qboRevoke(s.refresh_token); }
     await db.query(`UPDATE integrations SET status='disconnected', secrets_enc=NULL WHERE id=$1`, [i.id]);
     await audit(db, actor(req), 'integrations', 'disconnect', `Disconnected ${p}`, { type: 'integration', id: i.id });
   });

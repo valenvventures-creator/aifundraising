@@ -84,6 +84,14 @@ async function qboTokenRequest(body: Record<string, string>) {
   if (!r.ok) throw badRequest(`QuickBooks token error: ${j.error_description ?? j.error ?? r.status}`);
   return j;
 }
+/** Tell Intuit to revoke our access (used when an organization disconnects QuickBooks). Best effort. */
+export async function qboRevoke(token: string) {
+  if (!config.quickbooks.clientId || !token) return false;
+  const r = await fetch('https://developer.api.intuit.com/v2/oauth2/tokens/revoke', { method: 'POST',
+    headers: { Authorization: `Basic ${Buffer.from(`${config.quickbooks.clientId}:${config.quickbooks.clientSecret}`).toString('base64')}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ token }) }).catch(() => null);
+  return Boolean(r?.ok);
+}
 export async function qboExchange(code: string) {
   return qboTokenRequest({ grant_type: 'authorization_code', code, redirect_uri: `${config.apiUrl}/api/integrations/quickbooks/callback` });
 }
