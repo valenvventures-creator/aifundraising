@@ -72,6 +72,7 @@ export function Signup() {
         <OrgFields v={v} set={set} />
         <Button variant="primary" className="w-full" loading={busy}>Create organization</Button>
       </form>
+      <p className="mt-3 text-center text-xs text-slate-400">By creating an account you agree to the <Link to="/terms" className="underline hover:text-slate-600">End-User License Agreement</Link> and <Link to="/privacy" className="underline hover:text-slate-600">Privacy Policy</Link>.</p>
       <p className="mt-4 text-center text-sm text-slate-500">Already have an account? <Link to="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link></p>
     </Shell>
   );

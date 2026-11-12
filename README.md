@@ -47,6 +47,7 @@ You don't need to set any variables to get started. Open the site and choose **C
 | `JWT_SECRET`, `ENCRYPTION_KEY` | Your own keys. If they're unset, each is generated once and kept in a private Netlify Blobs store, separate from the database. **Never change or delete `ENCRYPTION_KEY` once data exists**, or saved integration credentials become unreadable. |
 | `QBO_*`, `GOOGLE_*`, `PLAID_*` | QuickBooks, Google (Gmail/Calendar/Maps) and bank-feed connections. See `.env.example`. |
 | `DATABASE_URL` | Use your own PostgreSQL database instead of Netlify Database. |
+| `LEGAL_COMPANY_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`, `LEGAL_GOVERNING_LAW`, `LEGAL_EFFECTIVE_DATE` | Details shown on the public End-User License Agreement (`/terms`) and Privacy Policy (`/privacy`) pages, e.g. `LEGAL_GOVERNING_LAW` = `the Province of Ontario, Canada`. |
 
 **Email.** Without Resend (or a user's connected Gmail), the app still works. *Forgot password* explains that email isn't set up and never shows reset links on screen, and invitations give the administrator a private link to share.
 

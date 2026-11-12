@@ -370,7 +370,7 @@ export function Landing() {
       <footer className="lp-foot">
         <div className="lp-wrap">
           <span className="flex flex-wrap items-center gap-3"><BrandLockup size="sm" /><span>© {new Date().getFullYear()} A.I. Fundraising</span></span>
-          <nav><a href="#platform">Platform</a><a href="#trust">Trust</a><Link to="/login">Sign in</Link><Link to="/signup">Get started</Link></nav>
+          <nav><a href="#platform">Platform</a><a href="#trust">Trust</a><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link><Link to="/login">Sign in</Link><Link to="/signup">Get started</Link></nav>
         </div>
       </footer>
     </div>

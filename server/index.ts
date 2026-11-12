@@ -43,6 +43,15 @@ export function createApp() {
   });
 
   app.get('/health', async (_req, res) => { await pool.query('SELECT 1'); res.json({ ok: true }); });
+  // Public details shown on the Terms (EULA) and Privacy pages; set in the host's environment variables.
+  app.get('/api/public/legal', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({
+      company: process.env.LEGAL_COMPANY_NAME || null, email: process.env.LEGAL_CONTACT_EMAIL || null, address: process.env.LEGAL_ADDRESS || null,
+      governingLaw: process.env.LEGAL_GOVERNING_LAW || null, effectiveDate: process.env.LEGAL_EFFECTIVE_DATE || 'November 12, 2026',
+      ai: config.aiEnabled,
+    });
+  });
   app.use('/', publicRouter);                       // tracking pixels/links + public event pages (JSON)
   app.use('/api/public', publicRouter);
   app.use('/api/auth', authRouter);

@@ -18,6 +18,7 @@ import { WorkShell, Tasks, ClientWork, CalendarPage, Communications, TimeLog } f
 import { Growth, Impact, Messages, Admin, Ask } from './pages/Platform';
 import { Settings } from './pages/Settings';
 import { Landing } from './pages/Landing';
+import { TermsPage, PrivacyPage } from './pages/Legal';
 import { WorkOverview } from './pages/WorkHub';
 import { GrantApplicationEditor } from './pages/GrantFinder';
 
@@ -35,6 +36,8 @@ function DonorsIndex() {
 function AuthedApp() {
   const { me, loading } = useSession();
   const loc = useLocation();
+  if (loc.pathname === '/terms') return <TermsPage />;
+  if (loc.pathname === '/privacy') return <PrivacyPage />;
   if (loc.pathname.startsWith('/e/')) return <Routes><Route path="/e/:slug" element={<PublicEvent />} /></Routes>;
   if (loc.pathname.startsWith('/invite/')) return <Routes><Route path="/invite/:token" element={<AcceptInvite />} /></Routes>;
   if (loc.pathname.startsWith('/reset-password/')) return <Routes><Route path="/reset-password/:token" element={<ResetPassword />} /></Routes>;
