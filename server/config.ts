@@ -54,7 +54,11 @@ export const config = {
   },
   google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             mapsKey: process.env.GOOGLE_MAPS_API_KEY },
-  stripe: { clientId: process.env.STRIPE_CONNECT_CLIENT_ID },
+  // One-click "Connect with Stripe" (Stripe Connect OAuth for existing Standard accounts).
+  stripe: { clientId: process.env.STRIPE_CONNECT_CLIENT_ID, secretKey: process.env.STRIPE_SECRET_KEY, connectWebhookSecret: process.env.STRIPE_CONNECT_WEBHOOK_SECRET },
+  // One-click "Connect with Square" (Square OAuth). SQUARE_ENVIRONMENT = production | sandbox.
+  square: { appId: process.env.SQUARE_APPLICATION_ID, appSecret: process.env.SQUARE_APPLICATION_SECRET, webhookSignatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY,
+            environment: (process.env.SQUARE_ENVIRONMENT ?? 'production') as 'sandbox' | 'production' },
   plaid: { clientId: process.env.PLAID_CLIENT_ID, secret: process.env.PLAID_SECRET, env: process.env.PLAID_ENV ?? 'sandbox' },
   runJobs: process.env.RUN_JOBS !== 'false',
 };

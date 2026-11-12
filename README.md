@@ -46,6 +46,8 @@ You don't need to set any variables to get started. Open the site and choose **C
 | `ANTHROPIC_API_KEY` | Turns on AI answers in Ask A.I. Fundraising and AI-written drafts. Without it, those features use built-in reports and templates. |
 | `JWT_SECRET`, `ENCRYPTION_KEY` | Your own keys. If they're unset, each is generated once and kept in a private Netlify Blobs store, separate from the database. **Never change or delete `ENCRYPTION_KEY` once data exists**, or saved integration credentials become unreadable. |
 | `QBO_*`, `GOOGLE_*`, `PLAID_*` | QuickBooks, Google (Gmail/Calendar/Maps) and bank-feed connections. See `.env.example`. |
+| `STRIPE_CONNECT_CLIENT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_CONNECT_WEBHOOK_SECRET` | One-click **Connect with Stripe** (Stripe Connect OAuth). Register redirect URI `https://<site>/api/integrations/stripe/callback` and a Connect webhook at `https://<site>/webhooks/stripe-connect` listening to events on connected accounts. |
+| `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_ENVIRONMENT` | One-click **Connect with Square** (Square OAuth). Redirect URL `https://<site>/api/integrations/square/callback`; webhook subscription at `https://<site>/webhooks/square-app`. |
 | `DATABASE_URL` | Use your own PostgreSQL database instead of Netlify Database. |
 | `LEGAL_COMPANY_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`, `LEGAL_GOVERNING_LAW`, `LEGAL_EFFECTIVE_DATE` | Details shown on the public End-User License Agreement (`/terms`) and Privacy Policy (`/privacy`) pages, e.g. `LEGAL_GOVERNING_LAW` = `the Province of Ontario, Canada`. |
 

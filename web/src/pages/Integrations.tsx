@@ -18,15 +18,22 @@ export function IntegrationsPage() {
   const sync = useApi<any>('/integrations/sync-center');
   const [creds, setCreds] = useState<string | null>(null); const [cfg, setCfg] = useState<any>(null); const [resolve, setResolve] = useState<any>(null);
   const { can } = useSession(); const { run } = useAction(); const { push } = useToast();
+  React.useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('connected')) push('success', `${label(q.get('connected')!)} connected. Payments will now arrive automatically.`);
+    if (q.get('error')) push('error', `Connection didn’t finish: ${q.get('error')}`);
+    if (q.get('connected') || q.get('error')) window.history.replaceState(null, '', window.location.pathname);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!data) return <Spinner />;
   const payments = sync.data?.payments ?? [];
   return <div className="space-y-5">
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {data.map((p) => { const i = p.integration; const connected = i?.status === 'connected';
+      {data.map((p) => { const i = p.integration; const connected = i?.status === 'connected'; const viaOauth = i?.config?.mode === 'oauth';
         return <Card key={p.key} title={<span className="flex items-center gap-2"><Plug className="h-4 w-4 text-brand-600" />{p.label}</span>} actions={<Chip value={connected ? (i.enabled ? 'connected' : 'paused') : 'disconnected'}>{connected ? (i.enabled ? 'Connected' : 'Disabled') : 'Not connected'}</Chip>}>
           <p className="text-sm text-slate-600">{p.description}</p>
           {i?.config?.companyName && <p className="mt-2 text-xs text-slate-500">Company: {i.config.companyName}</p>}
           {i?.config?.email && <p className="mt-2 text-xs text-slate-500">Account: {i.config.email}</p>}
+          {connected && viaOauth && <p className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />Connected{i.config.accountName ? ` to ${i.config.accountName}` : ''}. Payments arrive automatically.</p>}
           {i?.last_error && <p className="mt-2 text-xs text-red-600">Last error: {i.last_error}</p>}
           {p.webhookUrl && connected && <div className="mt-3 rounded-lg bg-slate-50 p-2 text-xs"><div className="mb-1 font-medium text-slate-600">Webhook URL (add in {p.label} dashboard)</div><div className="flex items-center gap-1"><code className="flex-1 truncate">{p.webhookUrl}</code><button onClick={() => { navigator.clipboard.writeText(p.webhookUrl); push('success', 'Copied'); }}><Copy className="h-3.5 w-3.5" /></button></div></div>}
           {!p.serverConfigured && <div className="mt-3"><Notice tone="warn">Unavailable until a server administrator adds {p.label} app credentials.</Notice></div>}
@@ -34,8 +41,9 @@ export function IntegrationsPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {p.serverConfigured && can(p.key === 'google' ? 'ai.ask' : 'integrations.manage') && !connected && p.kind === 'oauth' && p.key !== 'plaid' && <Button variant="primary" size="sm" onClick={async () => { const r = await run(() => api.get(`/integrations/${p.key}/connect`)); if (r) window.location.href = r.url; }}>Connect {p.label.split(' ')[0]}</Button>}
             {p.key === 'plaid' && <Link to="/money/accounting/bank" className="text-sm text-brand-600 hover:underline">Manage in Bank Feed →</Link>}
-            {can('integrations.manage') && p.kind === 'apikey' && <Button size="sm" variant={connected ? 'secondary' : 'primary'} onClick={() => setCreds(p.key)}>{connected ? 'Update credentials' : 'Connect'}</Button>}
-            {connected && can('integrations.manage') && <><Button size="sm" onClick={async () => { const r = await run(() => api.post(`/integrations/${p.key}/test`)); if (r) push(r.ok ? 'success' : 'error', r.message); reload(); }}>Test connection</Button>
+            {can('integrations.manage') && p.oneClick && !connected && <Button size="sm" variant="primary" onClick={async () => { const r = await run(() => api.get(`/integrations/${p.key}/connect`)); if (r) window.location.href = r.url; }}>Connect with {p.label}</Button>}
+            {can('integrations.manage') && p.kind === 'apikey' && !(connected && viaOauth) && <Button size="sm" variant={connected || p.oneClick ? 'secondary' : 'primary'} onClick={() => setCreds(p.key)}>{connected ? 'Update credentials' : p.oneClick ? 'Use API keys instead' : 'Connect'}</Button>}
+            {connected && can('integrations.manage') && <>{!viaOauth && <Button size="sm" onClick={async () => { const r = await run(() => api.post(`/integrations/${p.key}/test`)); if (r) push(r.ok ? 'success' : 'error', r.message); reload(); }}>Test connection</Button>}
               {['stripe', 'square', 'paypal'].includes(p.key) && <Button size="sm" onClick={() => setCfg({ provider: p.key, ...(i.config ?? {}) })}>Mapping</Button>}
               {p.key === 'stripe' && <Button size="sm" onClick={async () => { const r = await run(() => api.post('/integrations/stripe/import')); if (r) { push('success', `Imported ${r.imported} payments`); sync.reload(); } }}>Import recent</Button>}
               <Button size="sm" variant="ghost" onClick={async () => { if (await run(() => api.post(`/integrations/${p.key}/toggle`))) reload(); }}>{i.enabled ? 'Turn off' : 'Turn on'}</Button>

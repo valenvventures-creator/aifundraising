@@ -8,7 +8,7 @@ import { many, one, withSystem, withTenant } from '../db/pool.js';
 import { config } from '../config.js';
 import { decryptJson } from '../lib/crypto.js';
 import {
-  PROVIDERS, getIntegration, upsertIntegration, publicView, verifyState, qboAuthUrl, qboExchange, qboRedirectUri, qboListRefs, qboPushEntry, qboExportRows,
+  PROVIDERS, getIntegration, upsertIntegration, publicView, verifyState, qboAuthUrl, qboExchange, qboRedirectUri, stripeOauthReady, squareOauthReady, stripeConnectUrl, stripeConnectExchange, stripeDeauthorize, squareConnectUrl, squareConnectExchange, squareRevoke, qboListRefs, qboPushEntry, qboExportRows,
   verifyStripe, stripeToEvents, stripeImportRecent, verifySquare, squareToEvents, verifyPaypal, paypalToEvents, ingestPayment, resolvePayment,
   googleAuthUrl, googleExchange, googleCreateEvent, plaidCall, plaidSync,
 } from '../services/integrations.js';
@@ -32,8 +32,8 @@ integrationsRouter.get('/', h(async (req, res) => {
     return Object.entries(PROVIDERS).map(([key, meta]) => {
       const i = rows.find((r) => r.provider === key);
       const serverConfigured = key === 'quickbooks' ? Boolean(config.quickbooks.clientId) : key === 'google' ? Boolean(config.google.clientId) : key === 'plaid' ? Boolean(config.plaid.clientId) : true;
-      return { key, ...meta, serverConfigured, integration: publicView(i), redirectUri: key === 'quickbooks' ? qboRedirectUri(siteBase(req)) : undefined,
-        webhookUrl: i && ['stripe', 'square', 'paypal'].includes(key) ? `${config.apiUrl}/webhooks/${key}/${i.webhook_key}` : null };
+      return { key, ...meta, serverConfigured, integration: publicView(i), redirectUri: key === 'quickbooks' ? qboRedirectUri(siteBase(req)) : undefined, oneClick: key === 'stripe' ? stripeOauthReady() : key === 'square' ? squareOauthReady() : undefined,
+        webhookUrl: i && i.config?.mode !== 'oauth' && ['stripe', 'square', 'paypal'].includes(key) ? `${siteBase(req) ?? config.apiUrl}/webhooks/${key}/${i.webhook_key}` : null };
     });
   });
   res.json(out);
@@ -88,6 +88,9 @@ integrationsRouter.post('/:provider/disconnect', h(async (req, res) => {
     const i = await getIntegration(db, p, p === 'google' ? req.auth!.userId : null); if (!i) throw notFound('Integration');
     if (p === 'google') { const s = decryptJson<any>(i.secrets_enc); if (s?.refresh_token) await fetch(`https://oauth2.googleapis.com/revoke?token=${s.refresh_token}`, { method: 'POST' }).catch(() => {}); }
     if (p === 'quickbooks') { const s = decryptJson<any>(i.secrets_enc); if (s?.refresh_token) await (await import('../services/integrations.js')).qboRevoke(s.refresh_token); }
+    if (p === 'stripe' && i.config?.mode === 'oauth') await stripeDeauthorize(i.config.account_id);
+    if (p === 'square' && i.config?.mode === 'oauth') await squareRevoke(i.config.merchant_id);
+    if (i.config?.mode === 'oauth') await db.query(`UPDATE integrations SET config = config - 'mode' - 'account_id' - 'merchant_id' WHERE id=$1`, [i.id]);
     await db.query(`UPDATE integrations SET status='disconnected', secrets_enc=NULL WHERE id=$1`, [i.id]);
     await audit(db, actor(req), 'integrations', 'disconnect', `Disconnected ${p}`, { type: 'integration', id: i.id });
   });
@@ -116,6 +119,8 @@ integrationsRouter.post('/:provider/test', h(async (req, res) => {
 
 // ── OAuth starts ──
 integrationsRouter.get('/quickbooks/connect', h(async (req, res) => { requirePerm(req.auth, 'integrations.manage'); res.json({ url: qboAuthUrl(req.auth!.tenantId, req.auth!.userId, siteBase(req)) }); }));
+integrationsRouter.get('/stripe/connect', h(async (req, res) => { requirePerm(req.auth, 'integrations.manage'); res.json({ url: stripeConnectUrl(req.auth!.tenantId, req.auth!.userId, `${siteBase(req) ?? config.apiUrl}/api/integrations/stripe/callback`) }); }));
+integrationsRouter.get('/square/connect', h(async (req, res) => { requirePerm(req.auth, 'integrations.manage'); res.json({ url: squareConnectUrl(req.auth!.tenantId, req.auth!.userId, `${siteBase(req) ?? config.apiUrl}/api/integrations/square/callback`) }); }));
 integrationsRouter.get('/google/connect', h(async (req, res) => { res.json({ url: googleAuthUrl(req.auth!.tenantId, req.auth!.userId) }); }));
 
 // ── QuickBooks mappings & Sync Center ──
@@ -245,7 +250,7 @@ oauthCallbackRouter.get('/quickbooks/callback', requireAuth, h(async (req, res) 
   const st = verifyState(String(req.query.state));
   if (st.tenantId !== req.auth!.tenantId || st.userId !== req.auth!.userId) throw badRequest('This connection was started from a different session.');
   requirePerm(req.auth, 'integrations.manage');
-  if (req.query.error) return res.redirect(`${config.appUrl}/money/accounting/integrations?error=${encodeURIComponent(String(req.query.error))}`);
+  if (req.query.error) return res.redirect(`${siteBase(req) ?? config.appUrl}/money/accounting/integrations?error=${encodeURIComponent(String(req.query.error))}`);
   const t = await qboExchange(String(req.query.code), siteBase(req));
   await withTenant(req.auth!.tenantId, async (db) => {
     await upsertIntegration(db, req.auth!.tenantId, 'quickbooks', null, { status: 'connected', config: { realmId: String(req.query.realmId), environment: config.quickbooks.environment, syncStart: today() },
@@ -253,18 +258,51 @@ oauthCallbackRouter.get('/quickbooks/callback', requireAuth, h(async (req, res) 
     try { const info = await (await import('../services/integrations.js')).qboFetch(db, req.auth!.tenantId, `/companyinfo/${req.query.realmId}`); await upsertIntegration(db, req.auth!.tenantId, 'quickbooks', null, { config: { companyName: info.CompanyInfo?.CompanyName } }); } catch { /* optional */ }
     await audit(db, actor(req), 'integrations', 'connect', 'Connected QuickBooks Online', { type: 'integration' }, { realmId: req.query.realmId });
   });
-  res.redirect(`${config.appUrl}/money/accounting/sync?connected=quickbooks`);
+  res.redirect(`${siteBase(req) ?? config.appUrl}/money/accounting/sync?connected=quickbooks`);
 }));
 oauthCallbackRouter.get('/google/callback', requireAuth, h(async (req, res) => {
   const st = verifyState(String(req.query.state));
   if (st.tenantId !== req.auth!.tenantId || st.userId !== req.auth!.userId) throw badRequest('This connection was started from a different session.');
-  if (req.query.error) return res.redirect(`${config.appUrl}/settings?tab=google&error=${encodeURIComponent(String(req.query.error))}`);
+  if (req.query.error) return res.redirect(`${siteBase(req) ?? config.appUrl}/settings?tab=google&error=${encodeURIComponent(String(req.query.error))}`);
   const t = await googleExchange(String(req.query.code));
   await withTenant(req.auth!.tenantId, async (db) => {
     await upsertIntegration(db, req.auth!.tenantId, 'google', req.auth!.userId, { status: 'connected', config: { email: t.email, scopes: t.scope }, secrets: { refresh_token: t.refresh_token }, connectedBy: req.auth!.userId });
     await audit(db, actor(req), 'integrations', 'connect', `Connected Google account ${t.email}`, { type: 'integration' });
   });
-  res.redirect(`${config.appUrl}/settings?tab=google&connected=1`);
+  res.redirect(`${siteBase(req) ?? config.appUrl}/settings?tab=google&connected=1`);
+}));
+
+oauthCallbackRouter.get('/stripe/callback', requireAuth, h(async (req, res) => {
+  const back = `${siteBase(req) ?? config.appUrl}/money/accounting/integrations`;
+  if (req.query.error) return res.redirect(`${back}?error=${encodeURIComponent(String(req.query.error_description ?? req.query.error))}`);
+  const st = verifyState(String(req.query.state));
+  if (st.tenantId !== req.auth!.tenantId || st.userId !== req.auth!.userId) throw badRequest('This connection was started from a different session.');
+  requirePerm(req.auth, 'integrations.manage');
+  const t = await stripeConnectExchange(String(req.query.code));
+  await withTenant(req.auth!.tenantId, async (db) => {
+    const taken = await withSystem((sys) => one(sys, `SELECT tenant_id FROM integrations WHERE provider='stripe' AND status='connected' AND config->>'account_id'=$1 AND tenant_id<>$2`, [t.accountId, req.auth!.tenantId]));
+    if (taken) throw badRequest('That Stripe account is already connected to another organization.');
+    await upsertIntegration(db, req.auth!.tenantId, 'stripe', null, { status: 'connected', config: { mode: 'oauth', account_id: t.accountId, livemode: t.livemode, accountName: t.name, connectedAt: new Date().toISOString() }, connectedBy: req.auth!.userId, lastError: null });
+    await audit(db, actor(req), 'integrations', 'connect', `Connected Stripe account ${t.name ?? t.accountId}`, { type: 'integration' }, { account: t.accountId });
+  });
+  res.redirect(`${back}?connected=stripe`);
+}));
+
+oauthCallbackRouter.get('/square/callback', requireAuth, h(async (req, res) => {
+  const back = `${siteBase(req) ?? config.appUrl}/money/accounting/integrations`;
+  if (req.query.error) return res.redirect(`${back}?error=${encodeURIComponent(String(req.query.error_description ?? req.query.error))}`);
+  const st = verifyState(String(req.query.state));
+  if (st.tenantId !== req.auth!.tenantId || st.userId !== req.auth!.userId) throw badRequest('This connection was started from a different session.');
+  requirePerm(req.auth, 'integrations.manage');
+  const t = await squareConnectExchange(String(req.query.code), `${siteBase(req) ?? config.apiUrl}/api/integrations/square/callback`);
+  await withTenant(req.auth!.tenantId, async (db) => {
+    const taken = await withSystem((sys) => one(sys, `SELECT tenant_id FROM integrations WHERE provider='square' AND status='connected' AND config->>'merchant_id'=$1 AND tenant_id<>$2`, [t.merchantId, req.auth!.tenantId]));
+    if (taken) throw badRequest('That Square account is already connected to another organization.');
+    await upsertIntegration(db, req.auth!.tenantId, 'square', null, { status: 'connected', config: { mode: 'oauth', merchant_id: t.merchantId, accountName: t.name, environment: config.square.environment, connectedAt: new Date().toISOString() },
+      secrets: { access_token: t.accessToken, refresh_token: t.refreshToken, expires_at: t.expiresAt }, connectedBy: req.auth!.userId, lastError: null });
+    await audit(db, actor(req), 'integrations', 'connect', `Connected Square account ${t.name ?? t.merchantId}`, { type: 'integration' }, { merchant: t.merchantId });
+  });
+  res.redirect(`${back}?connected=square`);
 }));
 
 // ───────── Webhooks (public, signature-verified, raw body) ─────────
@@ -292,6 +330,37 @@ async function recordAndProcess(tenantId: string, provider: string, eventId: str
   });
 }
 
+/** One endpoint for every organization connected with "Connect with Stripe" (a Stripe Connect webhook). */
+webhooksRouter.post('/stripe-connect', h(async (req, res) => {
+  if (!config.stripe.connectWebhookSecret) throw badRequest('Stripe Connect webhook is not configured (STRIPE_CONNECT_WEBHOOK_SECRET).');
+  verifyStripe(req.body as Buffer, req.header('stripe-signature'), config.stripe.connectWebhookSecret);
+  const evt = JSON.parse((req.body as Buffer).toString('utf8'));
+  if (!evt.account) return res.json({ received: true, ignored: 'not a connected-account event' });
+  const i = await withSystem((db) => one(db, `SELECT * FROM integrations WHERE provider='stripe' AND config->>'mode'='oauth' AND config->>'account_id'=$1 ORDER BY status='connected' DESC LIMIT 1`, [evt.account]));
+  if (!i) return res.json({ received: true, ignored: 'unknown account' });
+  if (evt.type === 'account.application.deauthorized') {
+    await withTenant(i.tenant_id, async (db) => { await db.query(`UPDATE integrations SET status='disconnected', last_error='Disconnected from the Stripe dashboard.' WHERE id=$1`, [i.id]); });
+    return res.json({ received: true });
+  }
+  if (i.status !== 'connected' || !i.enabled) return res.json({ received: true, ignored: 'not connected' });
+  await recordAndProcess(i.tenant_id, 'stripe', evt.id, evt.type, evt, stripeToEvents(evt));
+  res.json({ received: true });
+}));
+/** One endpoint for every organization connected with "Connect with Square" (an app-level Square webhook subscription). */
+webhooksRouter.post('/square-app', h(async (req, res) => {
+  if (!config.square.webhookSignatureKey) throw badRequest('Square webhook is not configured (SQUARE_WEBHOOK_SIGNATURE_KEY).');
+  verifySquare(req.body as Buffer, req.header('x-square-hmacsha256-signature'), config.square.webhookSignatureKey, `${process.env.SQUARE_WEBHOOK_URL || `${siteBase(req) ?? config.apiUrl}/webhooks/square-app`}`);
+  const evt = JSON.parse((req.body as Buffer).toString('utf8'));
+  const i = await withSystem((db) => one(db, `SELECT * FROM integrations WHERE provider='square' AND config->>'mode'='oauth' AND config->>'merchant_id'=$1 ORDER BY status='connected' DESC LIMIT 1`, [evt.merchant_id]));
+  if (!i) return res.json({ received: true, ignored: 'unknown merchant' });
+  if (evt.type === 'oauth.authorization.revoked') {
+    await withTenant(i.tenant_id, async (db) => { await db.query(`UPDATE integrations SET status='disconnected', last_error='Disconnected from the Square dashboard.' WHERE id=$1`, [i.id]); });
+    return res.json({ received: true });
+  }
+  if (i.status !== 'connected' || !i.enabled) return res.json({ received: true, ignored: 'not connected' });
+  await recordAndProcess(i.tenant_id, 'square', evt.event_id, evt.type, evt, squareToEvents(evt));
+  res.json({ received: true });
+}));
 webhooksRouter.post('/stripe/:key', h(async (req, res) => {
   const i = await routeWebhook('stripe', String(req.params.key));
   const s = decryptJson<any>(i.secrets_enc);
@@ -305,7 +374,7 @@ webhooksRouter.post('/square/:key', h(async (req, res) => {
   const i = await routeWebhook('square', String(req.params.key));
   const s = decryptJson<any>(i.secrets_enc);
   if (!s?.signature_key) throw badRequest('Square signature key not configured.');
-  verifySquare(req.body as Buffer, req.header('x-square-hmacsha256-signature'), s.signature_key, `${config.apiUrl}/webhooks/square/${i.webhook_key}`);
+  verifySquare(req.body as Buffer, req.header('x-square-hmacsha256-signature'), s.signature_key, `${siteBase(req) ?? config.apiUrl}/webhooks/square/${i.webhook_key}`);
   const evt = JSON.parse((req.body as Buffer).toString('utf8'));
   await recordAndProcess(i.tenant_id, 'square', evt.event_id, evt.type, evt, squareToEvents(evt));
   res.json({ received: true });

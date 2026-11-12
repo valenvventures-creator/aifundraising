@@ -281,8 +281,10 @@ export function stripeToEvents(evt: any): PaymentEvent[] {
 }
 export async function stripeImportRecent(db: Db, tenantId: string) {
   const i = await getIntegration(db, 'stripe'); const s = decryptJson<any>(i?.secrets_enc);
-  if (!s?.api_key) throw badRequest('Add a Stripe restricted API key first.');
-  const r = await fetch('https://api.stripe.com/v1/charges?limit=100', { headers: { Authorization: `Bearer ${s.api_key}` } });
+  const viaOauth = i?.config?.mode === 'oauth' && i?.config?.account_id && config.stripe.secretKey;
+  if (!viaOauth && !s?.api_key) throw badRequest('Connect Stripe first.');
+  const headers: Record<string, string> = viaOauth ? { Authorization: `Bearer ${config.stripe.secretKey}`, 'Stripe-Account': i.config.account_id } : { Authorization: `Bearer ${s.api_key}` };
+  const r = await fetch('https://api.stripe.com/v1/charges?limit=100', { headers });
   const j: any = await r.json();
   if (!r.ok) throw badRequest(`Stripe: ${j.error?.message ?? r.status}`);
   let n = 0;
@@ -392,4 +394,58 @@ export async function plaidSync(db: Db, tenantId: string, bankAccountId: string)
   }
   await upsertIntegration(db, tenantId, 'plaid', null, { secrets: { [`cursor_${bankAccountId}`]: cursor } });
   return added;
+}
+
+
+// ── One-click connections (platform OAuth) ──
+export const stripeOauthReady = () => Boolean(config.stripe.clientId && config.stripe.secretKey);
+export const squareOauthReady = () => Boolean(config.square.appId && config.square.appSecret);
+const squareHost = () => (config.square.environment === 'sandbox' ? 'https://connect.squareupsandbox.com' : 'https://connect.squareup.com');
+
+export function stripeConnectUrl(tenantId: string, userId: string, redirectUri: string) {
+  if (!stripeOauthReady()) throw badRequest('One-click Stripe is not set up on this server (STRIPE_CONNECT_CLIENT_ID / STRIPE_SECRET_KEY).');
+  const p = new URLSearchParams({ response_type: 'code', client_id: config.stripe.clientId!, scope: 'read_only', redirect_uri: redirectUri, state: signState({ tenantId, userId, p: 'stripe' }) });
+  return `https://connect.stripe.com/oauth/authorize?${p}`;
+}
+export async function stripeConnectExchange(code: string) {
+  const r = await fetch('https://connect.stripe.com/oauth/token', { method: 'POST', headers: { Authorization: `Bearer ${config.stripe.secretKey}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'authorization_code', code }) });
+  const j: any = await r.json().catch(() => ({}));
+  if (!r.ok || !j.stripe_user_id) throw badRequest(`Stripe could not connect: ${j.error_description ?? j.error ?? r.status}`);
+  let name: string | null = null;
+  try {
+    const a: any = await (await fetch(`https://api.stripe.com/v1/accounts/${j.stripe_user_id}`, { headers: { Authorization: `Bearer ${config.stripe.secretKey}` } })).json();
+    name = a?.settings?.dashboard?.display_name ?? a?.business_profile?.name ?? a?.email ?? null;
+  } catch { /* name is optional */ }
+  return { accountId: j.stripe_user_id as string, livemode: Boolean(j.livemode), scope: j.scope as string, name };
+}
+export async function stripeDeauthorize(accountId: string) {
+  if (!stripeOauthReady() || !accountId) return false;
+  const r = await fetch('https://connect.stripe.com/oauth/deauthorize', { method: 'POST', headers: { Authorization: `Bearer ${config.stripe.secretKey}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: config.stripe.clientId!, stripe_user_id: accountId }) }).catch(() => null);
+  return Boolean(r?.ok);
+}
+
+export function squareConnectUrl(tenantId: string, userId: string, redirectUri: string) {
+  if (!squareOauthReady()) throw badRequest('One-click Square is not set up on this server (SQUARE_APPLICATION_ID / SQUARE_APPLICATION_SECRET).');
+  const p = new URLSearchParams({ client_id: config.square.appId!, scope: 'PAYMENTS_READ MERCHANT_PROFILE_READ CUSTOMERS_READ', session: 'false', redirect_uri: redirectUri, state: signState({ tenantId, userId, p: 'square' }) });
+  return `${squareHost()}/oauth2/authorize?${p}`;
+}
+export async function squareConnectExchange(code: string, redirectUri: string) {
+  const r = await fetch(`${squareHost()}/oauth2/token`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Square-Version': '2025-01-23' },
+    body: JSON.stringify({ client_id: config.square.appId, client_secret: config.square.appSecret, code, grant_type: 'authorization_code', redirect_uri: redirectUri }) });
+  const j: any = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw badRequest(`Square could not connect: ${j.errors?.[0]?.detail ?? j.message ?? r.status}`);
+  let name: string | null = null;
+  try {
+    const m: any = await (await fetch(`${squareHost()}/v2/merchants/${j.merchant_id}`, { headers: { Authorization: `Bearer ${j.access_token}`, 'Square-Version': '2025-01-23' } })).json();
+    name = m?.merchant?.business_name ?? null;
+  } catch { /* name is optional */ }
+  return { merchantId: j.merchant_id as string, accessToken: j.access_token as string, refreshToken: j.refresh_token as string | undefined, expiresAt: j.expires_at as string | undefined, name };
+}
+export async function squareRevoke(merchantId: string) {
+  if (!squareOauthReady() || !merchantId) return false;
+  const r = await fetch(`${squareHost()}/oauth2/revoke`, { method: 'POST', headers: { Authorization: `Client ${config.square.appSecret}`, 'Content-Type': 'application/json', 'Square-Version': '2025-01-23' },
+    body: JSON.stringify({ client_id: config.square.appId, merchant_id: merchantId }) }).catch(() => null);
+  return Boolean(r?.ok);
 }
