@@ -1,6 +1,7 @@
 /** Growth · Impact · Messages · Admin & Access · Ask A.I. Fundraising */
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ImpactOverview } from './ImpactHub';
 import { Send, Sparkles, Plus, Database, UserPlus, Copy, ShieldCheck } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { api, useApi } from '../lib/api';
@@ -42,25 +43,22 @@ export function Growth() {
 
 // ───────── Impact ─────────
 export function Impact() {
-  const [tab, setTab] = useState<'overview' | 'metrics' | 'stories'>('overview');
-  const { data } = useApi<any>('/impact/summary'); const { can } = useSession();
-  const [entry, setEntry] = useState<any>(null); const [report, setReport] = useState(false);
+  const [sp, setSp] = useSearchParams();
+  const tab = (sp.get('tab') ?? 'overview') as 'overview' | 'metrics' | 'stories';
+  const setTab = (t: string) => setSp(t === 'overview' ? {} : { tab: t });
+  const { can } = useSession();
+  const [entry, setEntry] = useState<any>(null);
   return <>
-    <PageHeader title="Impact" subtitle="Connect dollars raised and spent with programs, outcomes and stories." actions={can('ai.ask') && <Button icon={<Sparkles className="h-4 w-4" />} onClick={() => setReport(true)}>Draft impact report</Button>}>
-      <div className="mt-4"><StateTabs value={tab} onChange={setTab} tabs={[{ value: 'overview', label: 'Programs & outcomes' }, { value: 'metrics', label: 'Metrics' }, { value: 'stories', label: 'Stories' }]} /></div></PageHeader>
-    {tab === 'overview' && (!data ? <Spinner /> : !data.projects.length ? <Empty title="No programs yet">Create projects under Donors › Projects, then add impact metrics and stories.</Empty> :
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{data.projects.map((p: any) => <Card key={p.id} title={<Link to={`/donors/projects/${p.id}`} className="hover:underline">{p.name}</Link>} subtitle={p.fund_name ? `Fund: ${p.fund_name}` : undefined}>
-        <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-slate-50 p-2"><div className="text-xs text-slate-500">Raised</div><div className="font-bold">{money(p.raised)}</div></div><div className="rounded-xl bg-slate-50 p-2"><div className="text-xs text-slate-500">Spent</div><div className="font-bold">{money(p.spent)}</div></div><div className="rounded-xl bg-slate-50 p-2"><div className="text-xs text-slate-500">Beneficiaries</div><div className="font-bold">{num(p.beneficiaries)}</div></div></div>
-        <div className="mt-3 space-y-2">{(p.metrics ?? []).map((m: any) => <div key={m.name}><div className="flex justify-between text-sm"><span>{m.name}</span><span>{num(m.actual)}{m.target ? ` / ${num(m.target)}` : ''} {m.unit}{Number(m.actual) > 0 && p.spent > 0 ? <span className="text-xs text-slate-500"> · {money(p.spent / Number(m.actual))} per {m.unit ?? 'unit'}</span> : null}</span></div>{m.target && <Progress value={Number(m.actual)} max={Number(m.target)} tone="good" />}</div>)}{!(p.metrics ?? []).length && <p className="text-xs text-slate-500">No metrics yet.</p>}</div>
-      </Card>)}</div>)}
-    {tab === 'metrics' && <><ResourcePage resource="impact_metrics" title="Impact metric" writePerm="impact.write" onRowClick={(m: any) => can('impact.write') && setEntry(m)}
+    <PageHeader title="Impact" subtitle="Results from every part of your organization: giving, spending, programs, people, time, events, grants and stories.">
+      <div className="mt-4"><StateTabs value={tab} onChange={setTab} tabs={[{ value: 'overview', label: 'Overview' }, { value: 'metrics', label: 'Measures & results' }, { value: 'stories', label: 'Stories' }]} /></div></PageHeader>
+    {tab === 'overview' && <ImpactOverview />}
+    {tab === 'metrics' && <><div className="mb-3"><Notice>Add what you measure (meals served, students mentored, wells built) and link it to a program or workspace. Then click a measure to record a result. Results appear on the Overview right away.</Notice></div><ResourcePage resource="impact_metrics" title="Impact metric" writePerm="impact.write" onRowClick={(m: any) => can('impact.write') && setEntry(m)}
       fields={[{ key: 'name', label: 'Metric', required: true }, { key: 'unit', label: 'Unit (e.g. meals, students)' }, { key: 'target', label: 'Target', type: 'number' }, { key: 'period_start', label: 'Period start', type: 'date' }, { key: 'period_end', label: 'Period end', type: 'date' }, { key: 'project_id', label: 'Project', type: 'lookup', lookup: '/r/projects?limit=200' }, { key: 'fund_id', label: 'Fund', type: 'fund' }, { key: 'ministry_id', label: 'Workspace', type: 'workspace' }]}
       cols={[{ key: 'name', label: 'Metric', render: (m: any) => <span className="font-medium">{m.name}</span> }, { key: 'project_name', label: 'Project' }, { key: 'actual', label: 'Actual vs target', render: (m: any) => <div className="w-48"><div className="text-xs">{num(m.actual)}{m.target ? ` / ${num(m.target)}` : ''} {m.unit}</div>{m.target && <Progress value={m.actual} max={m.target} tone="good" />}</div> }, { key: 'period_end', label: 'Period', render: (m: any) => `${date(m.period_start)} – ${date(m.period_end)}` }, { key: 'e', label: '', render: (m: any) => can('impact.write') && <Button size="sm" onClick={(e) => { e.stopPropagation(); setEntry(m); }}>Record result</Button> }]} />
       {entry && <RecordModal open onClose={() => setEntry(null)} resource="impact_entries" title={`Result — ${entry.name}`} defaults={{ metric_id: entry.id, entry_date: new Date().toISOString().slice(0, 10) }} onSaved={() => window.location.reload()} fields={[{ key: 'metric_id', label: 'Metric', type: 'lookup', lookup: '/r/impact_metrics?limit=200', required: true }, { key: 'value', label: `Value (${entry.unit ?? 'units'})`, type: 'number', required: true }, { key: 'entry_date', label: 'Date', type: 'date' }, { key: 'notes', label: 'Notes', type: 'textarea' }]} />}</>}
     {tab === 'stories' && <ResourcePage resource="impact_stories" title="Impact story" writePerm="impact.write"
       fields={[{ key: 'title', label: 'Title', required: true, span: 2 }, { key: 'story', label: 'Story', type: 'textarea', required: true }, { key: 'beneficiaries', label: 'People served', type: 'number' }, { key: 'story_date', label: 'Date', type: 'date' }, { key: 'project_id', label: 'Project', type: 'lookup', lookup: '/r/projects?limit=200' }, { key: 'ministry_id', label: 'Workspace', type: 'workspace' }, { key: 'shareable', label: 'Approved for donor communications', type: 'bool' }]}
       cols={[{ key: 'title', label: 'Story', render: (s: any) => <div><div className="font-medium">{s.title}</div><div className="max-w-xl truncate text-xs text-slate-500">{s.story}</div></div> }, { key: 'project_name', label: 'Project' }, { key: 'beneficiaries', label: 'People', align: 'right' }, { key: 'shareable', label: 'Shareable', render: (s: any) => (s.shareable ? <Chip value="completed">Yes</Chip> : '') }, { key: 'story_date', label: 'Date', render: (s: any) => date(s.story_date) }]} />}
-    <DraftModal open={report} onClose={() => setReport(false)} kind="impact_story" title="Impact report draft" context={data ? data.projects.map((p: any) => `${p.name}: raised ${money(p.raised)}, spent ${money(p.spent)}, ${(p.metrics ?? []).map((m: any) => `${m.name} ${m.actual}/${m.target ?? '—'} ${m.unit ?? ''}`).join(', ')}; ${p.beneficiaries} people served`).join('\n') : ''} />
   </>;
 }
 
