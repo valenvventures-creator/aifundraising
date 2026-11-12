@@ -269,7 +269,7 @@ export function Landing() {
         <div className="lp-wrap lp-nav-in">
           <Link to="/" className="lp-brand" aria-label="A.I. Fundraising home">
             <img src="/logo-crest.webp" alt="" />
-            <span><b>A.I. Fundraising</b><small>by Thought Authorities</small></span>
+            <span><b>A.I. Fundraising</b></span>
           </Link>
           <nav className="lp-links" aria-label="Sections">{nav.map(([h, l]) => <a key={h} href={h}>{l}</a>)}</nav>
           <div className="lp-nav-cta">
@@ -369,7 +369,7 @@ export function Landing() {
 
       <footer className="lp-foot">
         <div className="lp-wrap">
-          <span>© {new Date().getFullYear()} Thought Authorities · A.I. Fundraising</span>
+          <span>© {new Date().getFullYear()} A.I. Fundraising</span>
           <nav><a href="#platform">Platform</a><a href="#trust">Trust</a><Link to="/login">Sign in</Link><Link to="/signup">Get started</Link></nav>
         </div>
       </footer>

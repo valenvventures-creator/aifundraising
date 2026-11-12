@@ -10,9 +10,8 @@ function Shell({ children, title, subtitle }: { children: React.ReactNode; title
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-brand-800 px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex flex-col items-center text-center">
-          <img src="/logo-crest.webp" alt="Thought Authorities" className="h-24 w-24 rounded-2xl bg-white object-contain p-1.5 shadow-lg" />
+          <img src="/logo-crest.webp" alt="" className="h-24 w-24 rounded-2xl bg-white object-contain p-1.5 shadow-lg" />
           <div className="mt-4 font-serif text-3xl font-bold tracking-wide text-gold-400">A.I. Fundraising</div>
-          <div className="text-xs uppercase tracking-[0.25em] text-slate-400">by Thought Authorities</div>
         </Link>
         <div className="rounded-2xl bg-white p-6 shadow-2xl">
           <h1 className="text-lg font-semibold text-slate-900">{title}</h1>

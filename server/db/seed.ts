@@ -33,8 +33,8 @@ async function main() {
 
   const { userId, tenantId } = await withSystem(async (db) => {
     const u = await one(db, `INSERT INTO users(email,name,password_hash) VALUES ('demo@aifundraising.org','Valerie Demo',$1) RETURNING id`, [await bcrypt.hash('demo-password-123', 12)]);
-    const t = await bootstrapTenant(db, { name: 'Thought Authorities Ministries', ownerUserId: u.id, firstWorkspace: 'Hope Community Church' });
-    await db.query(`UPDATE tenants SET legal_name='Thought Authorities Ministries, Inc.', email='office@example.org', phone='(615) 555-0100', address1='100 Main St', city='Nashville', region='TN', postal_code='37201', tax_id='12-3456789',
+    const t = await bootstrapTenant(db, { name: 'Hope Ministries', ownerUserId: u.id, firstWorkspace: 'Hope Community Church' });
+    await db.query(`UPDATE tenants SET legal_name='Hope Ministries, Inc.', email='office@example.org', phone='(615) 555-0100', address1='100 Main St', city='Nashville', region='TN', postal_code='37201', tax_id='12-3456789',
       receipt_settings='{"signatory":"Valerie Demo, Executive Director"}' WHERE id=$1`, [t.id]);
     // Teammates
     const staff = [['Marcus Finance', 'marcus@aifundraising.org', 'Finance/Accounting'], ['Dana Development', 'dana@aifundraising.org', 'Development/Fundraising'], ['Gina Grants', 'gina@aifundraising.org', 'Grant Manager']];
