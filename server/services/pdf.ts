@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
+import { CREST_PNG } from './crestImage.js';
 
 export type PdfBlock =
   | { type: 'h1' | 'h2' | 'p' | 'muted'; text: string }
@@ -19,9 +20,12 @@ export function renderPdf(res: Response, filename: string, opts: { title: string
   doc.pipe(res);
   const W = doc.page.width - 100;
 
-  doc.fillColor(INDIGO).fontSize(9).font('Helvetica-Bold').text('A.I. FUNDRAISING', 50, 40, { characterSpacing: 1.5 });
+  // Header: the lions-and-gates symbol (image only, no wording), then the product name.
+  doc.image(CREST_PNG, 50, 30, { width: 40 });
+  doc.fillColor(INDIGO).fontSize(9).font('Helvetica-Bold').text('A.I. FUNDRAISING', 98, 40, { characterSpacing: 1.5 });
   if (opts.org) doc.fillColor(GRAY).font('Helvetica').fontSize(9).text(opts.org, 50, 40, { align: 'right', width: W });
-  doc.moveDown(1.2);
+  doc.x = 50; doc.y = 66;
+  doc.moveDown(0.6);
   doc.fillColor(DARK).font('Helvetica-Bold').fontSize(20).text(opts.title);
   if (opts.subtitle) doc.fillColor(GRAY).font('Helvetica').fontSize(10).text(opts.subtitle);
   doc.moveDown(0.6);

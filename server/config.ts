@@ -39,7 +39,7 @@ export const config = {
   anthropicModel: process.env.ANTHROPIC_MODEL ?? 'claude-opus-5-5',
   aiEnabled: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),
   // Transactional email via Resend — same variable names as the other Thought Authorities sites.
-  // EMAIL_FROM must use a domain verified in Resend, e.g. "Thought Authorities <no-reply@yourdomain.com>".
+  // EMAIL_FROM must use a domain verified in Resend, e.g. "A.I. Fundraising <no-reply@yourdomain.com>".
   resend: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? {
     apiKey: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM, replyTo: process.env.EMAIL_REPLY_TO || undefined,
   } : null,

@@ -1,3 +1,4 @@
+import { BrandLockup } from './Brand';
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Home, Users, DollarSign, ListChecks, TrendingUp, HeartHandshake, MessageSquare, ShieldCheck, Settings, Sparkles, Search, Bell, Menu, X, LogOut, ChevronDown, Building2 } from 'lucide-react';
@@ -22,8 +23,7 @@ const NAV = [
 export function Logo({ compact }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
-      <img src="/logo-crest.webp" alt="" className="h-9 w-9 rounded-md bg-white object-contain p-0.5" />
-      {!compact && <div className="leading-tight"><div className="font-serif text-lg font-bold tracking-wide text-gold-400">A.I. Fundraising</div><div className="text-[10px] uppercase tracking-[0.18em] text-slate-400">by Thought Authorities</div></div>}
+      {compact ? <img src="/logo-emblem.webp" alt="A.I. Fundraising" className="h-8 w-auto" /> : <BrandLockup size="xs" onDark />}
     </div>
   );
 }

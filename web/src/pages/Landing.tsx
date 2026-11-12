@@ -5,6 +5,7 @@ import {
   Lock, UserCheck, FileText, Sparkles, CalendarDays, Plug, Receipt, TrendingUp, Scale, KeyRound, Eye,
 } from 'lucide-react';
 import './landing.css';
+import { BrandLockup } from '../components/Brand';
 
 /* ---------------- Motion helpers ---------------- */
 
@@ -268,8 +269,7 @@ export function Landing() {
       <header className={`lp-nav${scrolled ? ' is-scrolled' : ''}`}>
         <div className="lp-wrap lp-nav-in">
           <Link to="/" className="lp-brand" aria-label="A.I. Fundraising home">
-            <img src="/logo-crest.webp" alt="" />
-            <span><b>A.I. Fundraising</b><small>by Thought Authorities</small></span>
+            <span className="hidden sm:inline-flex"><BrandLockup size="md" /></span><span className="inline-flex sm:hidden"><BrandLockup size="sm" /></span>
           </Link>
           <nav className="lp-links" aria-label="Sections">{nav.map(([h, l]) => <a key={h} href={h}>{l}</a>)}</nav>
           <div className="lp-nav-cta">
@@ -355,8 +355,8 @@ export function Landing() {
         {/* Closing */}
         <section className="lp-section lp-darkband lp-close">
           <div className="lp-narrow" data-reveal>
-            <img src="/logo-crest.webp" alt="" />
-            <p className="lp-eyebrow" style={{ marginTop: 24 }}>Start today</p>
+            <div className="lp-close-logo"><BrandLockup size="lg" onDark stacked /></div>
+            <p className="lp-eyebrow" style={{ marginTop: 28 }}>Start today</p>
             <h2 className="lp-h2" style={{ color: '#fff', marginInline: 'auto' }}>Give your mission the <span className="lp-italic lp-accent">operating system</span> it deserves.</h2>
             <p className="lp-lede">Set up your organization in a minute, import your donors, and see your next best conversations today.</p>
             <div className="lp-ctas">
@@ -369,7 +369,7 @@ export function Landing() {
 
       <footer className="lp-foot">
         <div className="lp-wrap">
-          <span>© {new Date().getFullYear()} Thought Authorities · A.I. Fundraising</span>
+          <span className="flex flex-wrap items-center gap-3"><BrandLockup size="sm" /><span>© {new Date().getFullYear()} A.I. Fundraising</span></span>
           <nav><a href="#platform">Platform</a><a href="#trust">Trust</a><Link to="/login">Sign in</Link><Link to="/signup">Get started</Link></nav>
         </div>
       </footer>

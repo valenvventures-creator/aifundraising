@@ -54,9 +54,6 @@
 .lp-nav.is-scrolled { border-bottom-color: var(--line); }
 .lp-nav-in { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 16px; }
 .lp-brand { display: flex; align-items: center; gap: 10px; }
-.lp-brand img { width: 40px; height: 40px; object-fit: contain; }
-.lp-brand b { font: 700 18px var(--f-head); letter-spacing: -.03em; display: block; line-height: 1.1; }
-.lp-brand small { font: 500 9.5px var(--f-mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
 .lp-links { display: flex; gap: 28px; font: 500 14px var(--f-body); color: var(--text); }
 .lp-links a { position: relative; }
 .lp-links a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -4px; height: 1.5px; background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease); }
@@ -244,7 +241,7 @@
 
 /* Closing */
 .lp-close { text-align: center; position: relative; overflow: hidden; }
-.lp-close img { width: 96px; height: 96px; margin: 0 auto; animation: lp-bob 6s ease-in-out infinite; filter: drop-shadow(0 18px 30px rgba(239, 186, 17, .3)); }
+.lp-close-logo { display: flex; justify-content: center; animation: lp-bob 6s ease-in-out infinite; filter: drop-shadow(0 18px 30px rgba(239, 186, 17, .25)); }
 .lp-close .lp-ctas { justify-content: center; }
 .lp-foot { border-top: 1px solid var(--line); padding: 28px 0 36px; font-size: 13px; color: var(--muted); }
 .lp-foot .lp-wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; }
