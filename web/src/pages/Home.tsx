@@ -7,6 +7,7 @@ import { useSession } from '../lib/session';
 import { Button, Card, Metric, PageHeader, StateTabs, Spinner, ErrorBox, Modal, Field, Input, Textarea, Progress, Chip, useAction, Empty } from '../components/ui';
 import { money, num, date, dateTime, label } from '../lib/format';
 import { DonorsOverview } from './Donors';
+import { SetupGuide } from './Setup';
 
 export function Home() {
   const { terms, workspaces } = useSession();
@@ -68,7 +69,7 @@ export function Dashboard({ ministryId }: { ministryId?: string }) {
   const yoy = d.giving?.last_ytd ? Math.round(((d.giving.ytd - d.giving.last_ytd) / d.giving.last_ytd) * 100) : null;
   return (
     <div className="space-y-5">
-      {!d.onboarding.complete && <Onboarding steps={d.onboarding.steps} onChange={reload} />}
+      {!d.onboarding.complete && <SetupGuide steps={d.onboarding.steps} onChange={reload} />}
       {d.giving && <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
         <Metric label="Giving YTD" value={money(d.giving.ytd)} sub={yoy !== null ? `${yoy >= 0 ? '+' : ''}${yoy}% vs last year` : undefined} tone="brand" to="/money/accounting/giving" />
         <Metric label="Lifetime giving" value={money(d.giving.lifetime)} to="/donors/giving/reports" />
@@ -117,22 +118,4 @@ export function Dashboard({ ministryId }: { ministryId?: string }) {
   );
 }
 
-function Onboarding({ steps, onChange }: { steps: any[]; onChange: () => void }) {
-  const done = steps.filter((s) => s.done).length;
-  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem('ainp-onboarding-hidden') === '1'; } catch { return false; } });
-  if (hidden) return <button className="text-xs text-brand-600 hover:underline" onClick={() => { setHidden(false); try { localStorage.removeItem('ainp-onboarding-hidden'); } catch { /* ignore */ } }}>Show setup checklist ({done}/{steps.length})</button>;
-  return (
-    <Card title={`Get set up — ${done} of ${steps.length} complete`} subtitle="Optional integrations can be skipped." actions={<Button size="sm" variant="ghost" onClick={() => { setHidden(true); try { localStorage.setItem('ainp-onboarding-hidden', '1'); } catch { /* ignore */ } }}>Hide</Button>}>
-      <Progress value={done} max={steps.length} />
-      <ol className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {steps.map((s) => (
-          <li key={s.key} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2">
-            <Link to={s.link} className="flex items-center gap-2 text-sm">{s.done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-slate-300" />}<span className={s.done ? 'text-slate-400 line-through' : 'text-slate-700'}>{s.label}</span></Link>
-            {!s.done && <button className="shrink-0 text-xs text-slate-400 hover:text-slate-700" onClick={async () => { await api.post(`/onboarding/${s.optional ? `skip_${s.key}` : s.key}`); onChange(); }}>{s.optional ? 'Skip' : 'Mark done'}</button>}
-          </li>
-        ))}
-      </ol>
-    </Card>
-  );
-}
 export const _l = { label };

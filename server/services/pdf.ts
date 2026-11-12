@@ -19,7 +19,7 @@ export function renderPdf(res: Response, filename: string, opts: { title: string
   doc.pipe(res);
   const W = doc.page.width - 100;
 
-  doc.fillColor(INDIGO).fontSize(9).font('Helvetica-Bold').text('A.I. NONPROFITS', 50, 40, { characterSpacing: 1.5 });
+  doc.fillColor(INDIGO).fontSize(9).font('Helvetica-Bold').text('A.I. FUNDRAISING', 50, 40, { characterSpacing: 1.5 });
   if (opts.org) doc.fillColor(GRAY).font('Helvetica').fontSize(9).text(opts.org, 50, 40, { align: 'right', width: W });
   doc.moveDown(1.2);
   doc.fillColor(DARK).font('Helvetica-Bold').fontSize(20).text(opts.title);

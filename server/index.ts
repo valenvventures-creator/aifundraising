@@ -15,6 +15,7 @@ import { moneyRouter } from './routes/money.js';
 import { reachRouter, publicRouter } from './routes/reach.js';
 import { integrationsRouter, oauthCallbackRouter, webhooksRouter } from './routes/integrations.js';
 import { platformRouter } from './routes/platform.js';
+import { grantsRouter } from './routes/grants.js';
 import { pool, rlsUnsafe } from './db/pool.js';
 
 export function createApp() {
@@ -54,6 +55,7 @@ export function createApp() {
   api.use('/money', moneyRouter);
   api.use('/reach', reachRouter);
   api.use('/integrations', integrationsRouter);
+  api.use('/', grantsRouter);
   api.use('/', platformRouter);
   app.use('/api', api);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

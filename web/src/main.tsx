@@ -18,6 +18,7 @@ import { WorkShell, Tasks, ClientWork, CalendarPage, Communications, TimeLog } f
 import { Growth, Impact, Messages, Admin, Ask } from './pages/Platform';
 import { Settings } from './pages/Settings';
 import { Landing } from './pages/Landing';
+import { GrantApplicationEditor } from './pages/GrantFinder';
 
 function Guard({ perm, children }: { perm: string | string[]; children: React.ReactNode }) {
   const { can } = useSession();
@@ -67,6 +68,7 @@ function AuthedApp() {
             <Route path="receipts" element={<ReceiptsPage />} />
           </Route>
           <Route path="grants" element={<Guard perm="grants.read"><Grants /></Guard>} />
+          <Route path="grants/applications/:id" element={<Guard perm="grants.read"><GrantApplicationEditor /></Guard>} />
           <Route path="grants/:id" element={<Guard perm="grants.read"><GrantDetail /></Guard>} />
           <Route path="projects" element={<Guard perm="projects.read"><Projects /></Guard>} />
           <Route path="projects/:id" element={<Guard perm="projects.read"><ProjectDetail /></Guard>} />

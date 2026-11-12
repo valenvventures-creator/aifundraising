@@ -151,3 +151,17 @@ test('Netlify keys: created once, reused, and races settle on one saved value', 
     for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
   }
 });
+
+test('grant application templates track required answers for both countries', async () => {
+  const { GRANT_TEMPLATES, applicationProgress } = await import('../lib/grantTemplates.js');
+  for (const c of ['US', 'CA'] as const) {
+    const t = GRANT_TEMPLATES[c];
+    const keys = t.sections.flatMap((s) => s.fields.map((f) => f.key));
+    assert.equal(new Set(keys).size, keys.length, `${c}: field keys are unique`);
+    const empty = applicationProgress(t, {});
+    assert.equal(empty.done, 0); assert.ok(empty.total > 15);
+    const all: Record<string, any> = {};
+    for (const s of t.sections) for (const f of s.fields) all[f.key] = f.type === 'checkbox' ? true : f.type === 'budget' ? { [t.budgetLines[0].key]: { amount: 1000 } } : 'x';
+    assert.equal(applicationProgress(t, all).percent, 100);
+  }
+});

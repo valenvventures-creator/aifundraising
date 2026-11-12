@@ -9,6 +9,7 @@ import { ResourcePage, RecordModal, type FieldDef } from '../components/Resource
 import { DraftModal, TaskModal } from '../components/domain';
 import { Files } from './DonorProfile';
 import { money, num, date, dateTime, label } from '../lib/format';
+import { GrantFinder, GrantApplications, useStartApplication } from './GrantFinder';
 
 // ───────── Grants ─────────
 export const GRANT_STATUSES = ['researching', 'qualified', 'preparing', 'submitted', 'under_review', 'awarded', 'declined', 'reporting', 'closed'];
@@ -20,11 +21,13 @@ const GRANT_FIELDS: FieldDef[] = [
   { key: 'requirements', label: 'Reporting requirements', type: 'textarea' }, { key: 'notes', label: 'Notes', type: 'textarea' }];
 
 export function Grants() {
-  const [sp, setSp] = useSearchParams(); const tab = (sp.get('tab') ?? 'pipeline') as 'pipeline' | 'list' | 'funders';
+  const [sp, setSp] = useSearchParams(); const tab = (sp.get('tab') ?? 'find') as 'find' | 'applications' | 'pipeline' | 'list' | 'funders';
   const nav = useNavigate();
   return (
     <div className="space-y-4">
-      <StateTabs value={tab} onChange={(v) => setSp({ tab: v })} tabs={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'list', label: 'All grants' }, { value: 'funders', label: 'Funders' }]} />
+      <StateTabs value={tab} onChange={(v) => setSp({ tab: v })} tabs={[{ value: 'find', label: 'Find grants' }, { value: 'applications', label: 'Applications' }, { value: 'pipeline', label: 'Pipeline' }, { value: 'list', label: 'All grants' }, { value: 'funders', label: 'Funders' }]} />
+      {tab === 'find' && <GrantFinder />}
+      {tab === 'applications' && <GrantApplications />}
       {tab === 'pipeline' && <GrantPipeline />}
       {tab === 'list' && <ResourcePage resource="grants" title="Grant opportunity" emptyAction="Add Grant Opportunity" writePerm="grants.write" fields={GRANT_FIELDS} onRowClick={(r: any) => nav(`/donors/grants/${r.id}`)}
         emptyText="Track private and government grants from research through reporting. Deadlines feed your calendar, dashboard and reminders."
@@ -69,6 +72,11 @@ function GrantPipeline() {
     </>
   );
 }
+function StartFromGrant({ g }: { g: any }) {
+  const { me } = useSession(); const { start, busy } = useStartApplication();
+  const country = (me?.tenant as any)?.tax_jurisdiction === 'CA-CRA' || me?.tenant?.currency === 'CAD' ? 'CA' : 'US';
+  return <Button loading={busy} onClick={() => start({ country, title: g.title, funder: g.funder_name ?? null, deadline: g.deadline ? String(g.deadline).slice(0, 10) : null, grant_id: g.id, prefill: g.request_amount ? { amount_requested: Number(g.request_amount) } : undefined })}>Start application</Button>;
+}
 export function GrantDetail() {
   const { id } = useParams();
   const { data: g, reload } = useApi<any>(`/r/grants/${id}`);
@@ -79,7 +87,7 @@ export function GrantDetail() {
   if (!g) return <Spinner />;
   return <div className="space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/donors/grants" className="text-xs text-brand-600 hover:underline">← Grants</Link><h2 className="text-xl font-bold">{g.title}</h2><p className="text-sm text-slate-500">{g.funder_name ?? 'No funder'} · {g.ministry_name ?? 'Organization-wide'}</p></div>
-      <div className="flex gap-2">{can('ai.ask') && <Button icon={<Sparkles className="h-4 w-4" />} onClick={() => setDraft(true)}>Draft narrative</Button>}{can('work.write') && <Button onClick={() => setTask(true)}>Add task</Button>}{can('grants.write') && <Button variant="primary" onClick={() => setEdit(true)}>Edit</Button>}</div></div>
+      <div className="flex gap-2">{can('ai.ask') && <Button icon={<Sparkles className="h-4 w-4" />} onClick={() => setDraft(true)}>Draft narrative</Button>}{can('work.write') && <Button onClick={() => setTask(true)}>Add task</Button>}{can('grants.write') && <StartFromGrant g={g} />}{can('grants.write') && <Button variant="primary" onClick={() => setEdit(true)}>Edit</Button>}</div></div>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5"><Metric label="Status" value={<Chip value={g.status} />} /><Metric label="Requested" value={money(g.request_amount)} /><Metric label="Awarded" value={g.awarded_amount ? money(g.awarded_amount) : '—'} tone="good" /><Metric label="Deadline" value={date(g.deadline)} /><Metric label="Report due" value={date(g.report_due)} /></div>
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <Card title="Details"><dl className="space-y-2 text-sm"><Row l="Assigned" v={g.assignee_name} /><Row l="Project" v={g.project_name} /><Row l="Fund" v={g.fund_name} /><Row l="Submitted" v={date(g.submitted_on)} /><Row l="Decision" v={date(g.decision_on)} /><Row l="Requirements" v={g.requirements} /><Row l="Notes" v={g.notes} /></dl></Card>
