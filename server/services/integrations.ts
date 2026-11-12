@@ -71,10 +71,14 @@ const QBO_AUTH = 'https://appcenter.intuit.com/connect/oauth2';
 const QBO_TOKEN = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const qboBase = () => (config.quickbooks.environment === 'production' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com');
 
-export function qboAuthUrl(tenantId: string, userId: string) {
+/** The address Intuit sends people back to. Must match a Redirect URI saved in the Intuit app exactly. */
+export function qboRedirectUri(base?: string) {
+  return `${(process.env.QBO_REDIRECT_BASE || base || config.apiUrl).replace(/\/+$/, '')}/api/integrations/quickbooks/callback`;
+}
+export function qboAuthUrl(tenantId: string, userId: string, base?: string) {
   if (!config.quickbooks.clientId) throw badRequest('QuickBooks is not configured on this server (QBO_CLIENT_ID / QBO_CLIENT_SECRET).');
   const p = new URLSearchParams({ client_id: config.quickbooks.clientId, response_type: 'code', scope: 'com.intuit.quickbooks.accounting',
-    redirect_uri: `${config.apiUrl}/api/integrations/quickbooks/callback`, state: signState({ tenantId, userId, p: 'quickbooks' }) });
+    redirect_uri: qboRedirectUri(base), state: signState({ tenantId, userId, p: 'quickbooks' }) });
   return `${QBO_AUTH}?${p}`;
 }
 async function qboTokenRequest(body: Record<string, string>) {
@@ -92,8 +96,8 @@ export async function qboRevoke(token: string) {
     body: JSON.stringify({ token }) }).catch(() => null);
   return Boolean(r?.ok);
 }
-export async function qboExchange(code: string) {
-  return qboTokenRequest({ grant_type: 'authorization_code', code, redirect_uri: `${config.apiUrl}/api/integrations/quickbooks/callback` });
+export async function qboExchange(code: string, base?: string) {
+  return qboTokenRequest({ grant_type: 'authorization_code', code, redirect_uri: qboRedirectUri(base) });
 }
 async function qboAccess(db: Db, tenantId: string) {
   const i = await getIntegration(db, 'quickbooks');

@@ -8,12 +8,20 @@ import { many, one, withSystem, withTenant } from '../db/pool.js';
 import { config } from '../config.js';
 import { decryptJson } from '../lib/crypto.js';
 import {
-  PROVIDERS, getIntegration, upsertIntegration, publicView, verifyState, qboAuthUrl, qboExchange, qboListRefs, qboPushEntry, qboExportRows,
+  PROVIDERS, getIntegration, upsertIntegration, publicView, verifyState, qboAuthUrl, qboExchange, qboRedirectUri, qboListRefs, qboPushEntry, qboExportRows,
   verifyStripe, stripeToEvents, stripeImportRecent, verifySquare, squareToEvents, verifyPaypal, paypalToEvents, ingestPayment, resolvePayment,
   googleAuthUrl, googleExchange, googleCreateEvent, plaidCall, plaidSync,
 } from '../services/integrations.js';
 import { sendTable } from '../services/exporter.js';
 import { DONOR_NAME_SQL, today } from '../lib/util.js';
+
+/** The site address the person is using (e.g. https://aifundraising.io), so redirect addresses match their browser. */
+function siteBase(req: import('express').Request) {
+  const host = req.get('x-forwarded-host') || req.get('host');
+  if (!host) return undefined;
+  const local = /^(localhost|127\.0\.0\.1)(:|$)/.test(host);
+  return `${local ? req.protocol : 'https'}://${host}`;
+}
 
 export const integrationsRouter = Router();
 
@@ -24,7 +32,7 @@ integrationsRouter.get('/', h(async (req, res) => {
     return Object.entries(PROVIDERS).map(([key, meta]) => {
       const i = rows.find((r) => r.provider === key);
       const serverConfigured = key === 'quickbooks' ? Boolean(config.quickbooks.clientId) : key === 'google' ? Boolean(config.google.clientId) : key === 'plaid' ? Boolean(config.plaid.clientId) : true;
-      return { key, ...meta, serverConfigured, integration: publicView(i),
+      return { key, ...meta, serverConfigured, integration: publicView(i), redirectUri: key === 'quickbooks' ? qboRedirectUri(siteBase(req)) : undefined,
         webhookUrl: i && ['stripe', 'square', 'paypal'].includes(key) ? `${config.apiUrl}/webhooks/${key}/${i.webhook_key}` : null };
     });
   });
@@ -107,7 +115,7 @@ integrationsRouter.post('/:provider/test', h(async (req, res) => {
 }));
 
 // ── OAuth starts ──
-integrationsRouter.get('/quickbooks/connect', h(async (req, res) => { requirePerm(req.auth, 'integrations.manage'); res.json({ url: qboAuthUrl(req.auth!.tenantId, req.auth!.userId) }); }));
+integrationsRouter.get('/quickbooks/connect', h(async (req, res) => { requirePerm(req.auth, 'integrations.manage'); res.json({ url: qboAuthUrl(req.auth!.tenantId, req.auth!.userId, siteBase(req)) }); }));
 integrationsRouter.get('/google/connect', h(async (req, res) => { res.json({ url: googleAuthUrl(req.auth!.tenantId, req.auth!.userId) }); }));
 
 // ── QuickBooks mappings & Sync Center ──
@@ -238,7 +246,7 @@ oauthCallbackRouter.get('/quickbooks/callback', requireAuth, h(async (req, res) 
   if (st.tenantId !== req.auth!.tenantId || st.userId !== req.auth!.userId) throw badRequest('This connection was started from a different session.');
   requirePerm(req.auth, 'integrations.manage');
   if (req.query.error) return res.redirect(`${config.appUrl}/money/accounting/integrations?error=${encodeURIComponent(String(req.query.error))}`);
-  const t = await qboExchange(String(req.query.code));
+  const t = await qboExchange(String(req.query.code), siteBase(req));
   await withTenant(req.auth!.tenantId, async (db) => {
     await upsertIntegration(db, req.auth!.tenantId, 'quickbooks', null, { status: 'connected', config: { realmId: String(req.query.realmId), environment: config.quickbooks.environment, syncStart: today() },
       secrets: { access_token: t.access_token, refresh_token: t.refresh_token, expires_at: Date.now() + t.expires_in * 1000 }, connectedBy: req.auth!.userId });
